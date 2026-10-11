@@ -40,7 +40,7 @@
   "loft_high": "High",
   "tongue_ready": "Tongue ready: E",
   "tongue_need": "{n} / 10 for the tongue",
-  "prompt_aim": "A D aim · W S power · Q loft · Space to swing",
+  "prompt_aim": "A D aim · W S power · Q loft · V survey · Space to swing",
   "prompt_meter": "Space to whack: stop the needle in the gold · X to go back",
   "prompt_flight": "W A S D steer · Space jump · E tongue",
   "prompt_wings": "Wings! A D bank · W dive · S climb",
@@ -116,6 +116,10 @@
       "Every hole is a par 5 or more with three ways to the lotus: out left, out right, and down the middle. The left and right routes cross on a high terrace in the middle of the hole; the middle one goes under it through a tunnel. Cliffs, rivers and waterfalls sit between them."
     ],
     [
+      "Survey the hole",
+      "Press V (or the Survey button) to rise over the hole and plan. W A S D move the view, the wheel or + and − zoom, and dragging turns it. The pin on the ground shows how far it is from your frog, how far on to the lotus, and how much higher or lower it sits. Your aiming arc stays drawn, so you can see where this shot lands. V or Space comes back down. Surveying moves only your own camera: online, nobody else's view changes."
+    ],
+    [
       "Lily pads and webs",
       "Lily pads throw you back up. Spider webs are strung across pits in the ground, from medium to extra large: land on one and it stretches down and flings you up, and a bigger web flings harder."
     ],
@@ -179,6 +183,14 @@
       "Tongue (10 flies)"
     ],
     [
+      "V or M",
+      "Survey the hole from above, and back"
+    ],
+    [
+      "+ − or wheel",
+      "Zoom the survey"
+    ],
+    [
       "Mouse drag",
       "Look around"
     ],
@@ -234,5 +246,12 @@
   "slot_you": "You",
   "prompt_online": "{who} is playing",
   "points": "{n} pts",
-  "card_points": "Points"
+  "card_points": "Points",
+  "prompt_survey": "Surveying · W A S D move · wheel or + − zoom · drag to turn · V or Space to go back",
+  "survey_button": "Survey",
+  "survey_from": "{m} m from {who}",
+  "survey_to": "{m} m to the lotus",
+  "survey_rise": "{m} m up",
+  "survey_fall": "{m} m down",
+  "touch_survey": "Survey"
 }

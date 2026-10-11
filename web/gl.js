@@ -64,6 +64,7 @@ export function makeRenderer(canvas, N, shaders, meshData) {
   const uVP = uniform("uVP");
   const uEye = uniform("uEye");
   const uFocus = uniform("uFocus");
+  const uFogRange = uniform("uFogRange");
   const uPass = uniform("uPass");
   const uCut = uniform("uCut");
   const V = N.view;
@@ -90,7 +91,8 @@ export function makeRenderer(canvas, N, shaders, meshData) {
 
   return {
     software,
-    // The hole never moves: uploaded once a hole, with its ground, light and fog.
+    // The hole never moves: uploaded once a hole, with its ground, light and fog
+    // colour. How far the fog starts comes with each frame's view.
     setScene(values, uniformValues, clearColor, terrain) {
       const ground = meshes[N.terrain_mesh];
       gl.bindBuffer(gl.ARRAY_BUFFER, ground.buffer);
@@ -119,6 +121,7 @@ export function makeRenderer(canvas, N, shaders, meshData) {
       gl.uniformMatrix4fv(uVP, false, view.subarray(...V.matrix));
       gl.uniform3fv(uEye, view.subarray(...V.eye));
       gl.uniform4fv(uFocus, view.subarray(...V.focus));
+      gl.uniform2fv(uFogRange, view.subarray(...V.fog));
       let current = -1;
       let cut = -1;
       for (let i = 0; i < draws.length; i += N.draw_values) {

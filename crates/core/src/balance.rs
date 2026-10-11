@@ -189,3 +189,31 @@ pub const DRAG_TURN: i32 = 64;
 /// How quickly the camera turns to a new aim, out of 100 a tick.
 pub const CAM_AIM_PCT: i32 = 25;
 pub const INTRO_TICKS: i32 = secs(5_200);
+
+// ---- the survey (the view from above that plans a shot) ---------------------
+
+/// How high the survey camera may sit over the point it looks at.
+pub const SURVEY_LOW: i32 = fx::int(25);
+pub const SURVEY_HIGH: i32 = fx::int(460);
+/// Opening the survey: high enough to take in the frog and the lotus, which
+/// sit this share of the height apart (out of 100), and never lower than this.
+pub const SURVEY_FIT_PCT: i32 = 95;
+pub const SURVEY_FIT_MIN: i32 = fx::int(60);
+/// How far behind the point the camera sits, as a share of its height
+/// (out of 100): about sixty degrees down.
+pub const SURVEY_BACK_PCT: i32 = 58;
+/// Panning, a share of the height a tick (out of 1000).
+pub const SURVEY_PAN_PERMILLE: i32 = 9;
+/// Zooming with + and −, a share of the height a tick (out of 1000).
+pub const SURVEY_ZOOM_PERMILLE: i32 = 22;
+/// Zooming with the wheel: this many CSS pixels of wheel double the height.
+pub const SURVEY_WHEEL_PX: i32 = 450;
+/// The share of the way to its goal the camera moves each tick, out of 100.
+pub const SURVEY_CAM_PCT: i32 = 14;
+/// The fog draws back by this many times the camera's height over this, so
+/// the hole reads from above (the title's and the card's views sit lower).
+pub const SURVEY_FOG_TIMES: i32 = 3;
+pub const SURVEY_FOG_FROM: i32 = fx::int(45);
+/// Markers (the aiming guide, the survey's pin) grow with the camera's
+/// height over what it looks at: one size per this many metres.
+pub const MARK_GROW_EVERY: i32 = fx::int(28);

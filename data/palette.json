@@ -107,7 +107,8 @@
     "glowcap_b": "#C08AF5",
     "puffball": "#F2E8D2",
     "shelf": "#D9A36A",
-    "moss_deep": "#4F7A55"
+    "moss_deep": "#4F7A55",
+    "survey_pin": "#6FE3FF"
   },
   "themes": {
     "swamp": {

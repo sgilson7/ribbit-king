@@ -23,4 +23,5 @@ pub mod render;
 pub mod rng;
 pub mod round;
 pub mod scenery;
+pub mod survey;
 pub mod terrain;

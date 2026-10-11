@@ -1,11 +1,11 @@
 // Keyboard and mouse, turned into the action bits the core defines.
 // data/controls.json names the action for each key; the core's numbers()
 // gives each action its bit. Dragging on the view turns the camera. Nothing
-// here decides what an action does.
+// here decides what an action does. The wheel is passed on as it turns.
 
 export function makeInput(canvas, controls, actions) {
   // `tapped` keeps a press that is released before the next frame reads it
-  const state = { held: 0, tapped: 0, dx: 0, dy: 0, dragging: false };
+  const state = { held: 0, tapped: 0, dx: 0, dy: 0, wheel: 0, dragging: false };
   const bitOf = (code) => actions[controls[code]] || 0;
 
   function release() {
@@ -38,6 +38,15 @@ export function makeInput(canvas, controls, actions) {
     state.dx += e.movementX;
     state.dy += e.movementY;
   });
+  // the wheel zooms the survey; the core reads it in CSS pixels
+  canvas.addEventListener(
+    "wheel",
+    (e) => {
+      state.wheel += e.deltaY;
+      e.preventDefault();
+    },
+    { passive: false },
+  );
   canvas.addEventListener("contextmenu", (e) => e.preventDefault());
   window.addEventListener("blur", release);
 
@@ -57,10 +66,11 @@ export function makeInput(canvas, controls, actions) {
     read() {
       const drag = state.dragging ? actions.drag : 0;
       const bits = state.held | state.tapped | drag;
-      const out = { bits, dx: state.dx, dy: state.dy };
+      const out = { bits, dx: state.dx, dy: state.dy, wheel: state.wheel };
       state.tapped = 0;
       state.dx = 0;
       state.dy = 0;
+      state.wheel = 0;
       return out;
     },
   };

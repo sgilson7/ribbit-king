@@ -215,6 +215,14 @@ async function start() {
     b.addEventListener("pointerleave", () => input.press(b.dataset.hold, false));
   }
 
+  // the survey's button, for a mouse as well as a finger
+  el("survey-btn").addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    input.press("survey", true);
+  });
+  el("survey-btn").addEventListener("pointerup", () => input.press("survey", false));
+  el("survey-btn").addEventListener("pointerleave", () => input.press("survey", false));
+
   window.addEventListener("keydown", (e) => {
     const mode = document.body.dataset.mode;
     if (e.code === "Escape") {
@@ -260,8 +268,8 @@ async function start() {
   let sceneVersion = null;
   let lobbyShown = "";
   function frame(now) {
-    const { bits, dx, dy } = input.read();
-    game.advance(now, bits, dx, dy);
+    const { bits, dx, dy, wheel } = input.read();
+    game.advance(now, bits, dx, dy, wheel);
     online.pump();
     const h = JSON.parse(game.hud());
     // the core left online play (the host ended it, or we were turned away)

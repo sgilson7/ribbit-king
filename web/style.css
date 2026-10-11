@@ -138,6 +138,13 @@ table.controls td:first-child { font-weight: 800; white-space: nowrap; }
 .tag.active { display: none; }
 #lotus-tag { position: absolute; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 0.3em; background: var(--lotus); border: 2px solid var(--ink); border-radius: 999px; padding: 0.05em 0.6em; font-weight: 800; font-size: 0.85em; }
 
+#survey-btn { pointer-events: auto; margin-top: 0.4em; padding: 0.2em 0.8em; font-size: 0.85em; }
+#survey-btn.on { background: var(--lotus); }
+#survey-tag { position: absolute; transform: translate(-50%, calc(-100% - 10px)); display: flex; flex-direction: column; align-items: center; background: var(--paper); border: 3px solid var(--ink); border-radius: 10px; padding: 0.15em 0.7em; font-weight: 800; font-size: 0.85em; box-shadow: 0 3px 0 var(--ink); white-space: nowrap; }
+#survey-tag span:empty, #survey-tag span[hidden] { display: none; }
+body[data-survey="on"] .tag.active { display: block; }
+body[data-survey="on"] #meter-box { opacity: 0.55; }
+
 #touch { position: absolute; left: 50%; bottom: 56px; transform: translateX(-50%); display: flex; gap: 0.4em; pointer-events: auto; }
 #touch button { padding: 0.5em 0.8em; touch-action: none; }
 #touch button.big { background: var(--lotus); }

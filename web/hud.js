@@ -100,6 +100,21 @@ export function makeHud(copy, play) {
       lt.style.left = `${h.lotus.x}%`;
       lt.style.top = `${h.lotus.y}%`;
       el("lotus-dist").textContent = fill(copy.to_lotus, { m: h.lotus.dist });
+      const s = h.survey;
+      document.body.dataset.survey = s ? "on" : "off";
+      el("survey-btn").hidden = !h.can_survey;
+      el("survey-btn").classList.toggle("on", !!s);
+      const st = el("survey-tag");
+      st.hidden = !s || !s.on;
+      if (s) {
+        st.style.left = `${s.x}%`;
+        st.style.top = `${s.y}%`;
+        el("survey-from").textContent = fill(copy.survey_from, { m: s.from, who: p.name });
+        el("survey-to").textContent = fill(copy.survey_to, { m: s.to });
+        const up = s.rise > 0;
+        el("survey-rise").hidden = !s.rise;
+        el("survey-rise").textContent = fill(up ? copy.survey_rise : copy.survey_fall, { m: up ? s.rise : -s.rise });
+      }
       const m = h.meter;
       const box = el("meter-box");
       box.hidden = !m.show;

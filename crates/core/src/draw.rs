@@ -49,6 +49,11 @@ pub struct View<'a> {
     pub guide: &'a [V3],
     /// which player wears the crown (the leader), if anyone
     pub leader: Option<usize>,
+    /// how much bigger markers draw, ONE up close: from the survey's
+    /// height a guide drawn to a frog's scale would vanish
+    pub marks: i32,
+    /// the point the survey looks at, while it is up
+    pub pin: Option<V3>,
 }
 
 pub fn scene(b: &mut Batch, v: &View) {
@@ -121,10 +126,11 @@ pub fn scene(b: &mut Batch, v: &View) {
         let s = fx::mul(p.size, ONE / 2 + k / 2);
         b.push(Mesh::Blob, &at(p.pos, 0, v3(s, s, s)), p.rgb, p.glow, PASS_SOLID);
     }
+    let dot = fx::mul(cm(22), v.marks);
     for g in v.guide.iter().skip(2) {
         b.push(
             Mesh::Sphere,
-            &at(*g, 0, v3(cm(22), cm(22), cm(22))),
+            &at(*g, 0, v3(dot, dot, dot)),
             pal.c("guide"),
             ONE * 7 / 10,
             PASS_SOLID,
@@ -132,13 +138,32 @@ pub fn scene(b: &mut Batch, v: &View) {
     }
     if let Some(end) = v.guide.last() {
         let y = c.surface(end.x, end.z);
-        let pulse = cm(150) + fx::mul(fx::sin(t * deg(6)), cm(25));
+        let pulse = fx::mul(cm(150) + fx::mul(fx::sin(t * deg(6)), cm(25)), v.marks);
         b.push(
             Mesh::Ring,
             &at(v3(end.x, y + cm(15), end.z), 0, v3(pulse * 2, cm(20), pulse * 2)),
             pal.c("guide_end"),
             ONE / 2,
             PASS_SOLID,
+        );
+    }
+    if let Some(p) = v.pin {
+        // the survey's pin: a ring on the ground and a post of light over it
+        let r = fx::mul(cm(120), v.marks);
+        let w = fx::mul(cm(16), v.marks);
+        b.push(
+            Mesh::Ring,
+            &at(p.add(v3(0, cm(20), 0)), t * deg(1), v3(r * 2, w, r * 2)),
+            pal.c("survey_pin"),
+            ONE * 7 / 10,
+            PASS_SOLID,
+        );
+        let tall = fx::mul(int(3), v.marks);
+        b.glow(
+            Mesh::Cyl,
+            &at(p.add(v3(0, tall / 2, 0)), 0, v3(w * 2, tall, w * 2)),
+            pal.c("survey_pin"),
+            ONE / 3,
         );
     }
 }

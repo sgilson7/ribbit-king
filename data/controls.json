@@ -12,5 +12,11 @@
   "KeyE": "tongue",
   "KeyQ": "loft",
   "KeyX": "cancel",
-  "Backspace": "cancel"
+  "Backspace": "cancel",
+  "KeyV": "survey",
+  "KeyM": "survey",
+  "Equal": "zoom_in",
+  "NumpadAdd": "zoom_in",
+  "Minus": "zoom_out",
+  "NumpadSubtract": "zoom_out"
 }

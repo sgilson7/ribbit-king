@@ -21,11 +21,13 @@
   <!-- play -->
   <div id="hud" hidden>
     <div id="tags"></div>
+    <div id="survey-tag" hidden><span id="survey-from"></span><span id="survey-to"></span><span id="survey-rise"></span></div>
     <div id="lotus-tag" hidden><span class="pin"></span><span id="lotus-dist"></span></div>
     <div id="top-left" class="panel">
       <div class="hole-name" id="h-hole"></div>
       <div class="hole-sub"><span id="h-of"></span> · <span id="h-par"></span></div>
       <div class="hole-sub online-badge" id="h-online" hidden></div>
+      <button id="survey-btn" type="button" tabindex="-1" data-copy="survey_button" hidden></button>
     </div>
     <div id="top-right" class="panel">
       <ol id="h-standings"></ol>
@@ -67,6 +69,7 @@
       <button data-hold="back">▼</button>
       <button data-hold="right">▶</button>
       <button data-hold="loft" data-copy="touch_loft"></button>
+      <button data-hold="survey" data-copy="touch_survey"></button>
       <button data-hold="tongue" data-copy="touch_tongue"></button>
       <button data-hold="swing" class="big" data-copy="touch_swing"></button>
     </div>

@@ -14,6 +14,7 @@ use crate::render::{self, Batch, Camera};
 use crate::rng::Rng;
 use crate::round::{heading_to, Input, Note, Phase, Round};
 use crate::scenery;
+use crate::survey::Survey;
 use serde_json::{json, Value};
 use std::collections::BTreeMap;
 
@@ -28,6 +29,9 @@ pub const ACTIONS: &[(&str, u32)] = &[
     ("loft", 64),
     ("cancel", 128),
     ("drag", 256),
+    ("survey", 512),
+    ("zoom_in", 1024),
+    ("zoom_out", 2048),
 ];
 
 pub fn bit(name: &str) -> u32 {
@@ -136,6 +140,8 @@ pub struct Game {
     eye: V3,
     look: V3,
     orbit: i32,
+    /// the view from above, while a person plans a shot (theirs alone)
+    survey: Option<Survey>,
     aspect: i32,
     scene_version: u32,
     static_values: Vec<i32>,
@@ -193,6 +199,7 @@ impl Game {
             eye: v3(0, int(30), int(40)),
             look: V3::ZERO,
             orbit: 0,
+            survey: None,
             aspect: ONE * 16 / 9,
             scene_version: 1,
             static_values: Vec::new(),
@@ -797,8 +804,8 @@ impl Game {
     // ---- the clock ------------------------------------------------------------
 
     /// The page's clock in microseconds, the held action bits, the mouse's
-    /// movement (CSS pixels ×100).
-    pub fn advance(&mut self, now_us: i64, bits: u32, dx: i32, _dy: i32) {
+    /// movement and the wheel (CSS pixels ×100).
+    pub fn advance(&mut self, now_us: i64, bits: u32, dx: i32, _dy: i32, wheel: i32) {
         self.sounds.clear();
         let dt = match self.last_us {
             None => TICK_US,
@@ -806,15 +813,21 @@ impl Game {
         };
         self.last_us = Some(now_us);
         self.acc += dt;
-        self.pending |= bits & !self.prev_bits;
+        let fresh = bits & !self.prev_bits;
         self.prev_bits = bits;
-        if bits & bit("drag") != 0 {
-            self.orbit = fx::wrap(self.orbit - dx * DRAG_TURN / 100);
-        }
         let mut due = 0;
         while self.acc >= TICK_US {
             self.acc -= TICK_US;
             due += 1;
+        }
+        // the survey takes the keys while it is up, and the press that closes it
+        let surveying = self.survey_keys(bits, fresh, dx, wheel, due);
+        let bits = if surveying { bits & bit("drag") } else { bits };
+        if !surveying {
+            self.pending |= fresh;
+            if bits & bit("drag") != 0 {
+                self.orbit = fx::wrap(self.orbit - dx * DRAG_TURN / 100);
+            }
         }
         let here_yaw = crate::geom::yaw_pitch_of(self.look.sub(self.eye)).0;
         match self.role() {
@@ -864,6 +877,52 @@ impl Game {
             }
         }
         self.render();
+    }
+
+    fn can_survey(&self) -> bool {
+        matches!(&self.round, Some(r) if self.mode == Mode::Play && r.phase != Phase::Done)
+    }
+
+    /// The survey's keys for this frame: V opens and closes it, Space or X
+    /// closes it too; while it is up the steering keys pan it, + and − or
+    /// the wheel zoom it, and dragging turns it. True when the frame's keys
+    /// were the survey's, so the round never sees them.
+    fn survey_keys(&mut self, bits: u32, fresh: u32, dx: i32, wheel: i32, due: usize) -> bool {
+        if !self.can_survey() {
+            self.survey = None;
+            return false;
+        }
+        let Some(mut s) = self.survey else {
+            if fresh & bit("survey") != 0 {
+                let r = self.round.as_ref().unwrap();
+                self.survey = Some(Survey::open(&self.course, r.players[r.active].body.pos));
+                self.sounds.push("click");
+                return true;
+            }
+            return false;
+        };
+        if fresh & (bit("survey") | bit("swing") | bit("cancel")) != 0 {
+            self.survey = None;
+            self.sounds.push("click");
+            return true;
+        }
+        if bits & bit("drag") != 0 {
+            s.turn(-dx * DRAG_TURN / 100);
+        }
+        if wheel != 0 {
+            s.wheel(wheel);
+        }
+        let held = |n: &str| (bits & bit(n) != 0) as i32;
+        for _ in 0..due {
+            s.pan(
+                &self.course,
+                held("right") - held("left"),
+                held("forward") - held("back"),
+            );
+            s.zoom_keys(held("zoom_out") - held("zoom_in"));
+        }
+        self.survey = Some(s);
+        true
     }
 
     /// Frames that run no round: the camera, the particles and the clock of
@@ -1251,6 +1310,10 @@ impl Game {
         let c = &self.course;
         let up = |h: i32| v3(0, h, 0);
         let (goal_eye, goal_look, pct) = match (self.mode, &self.round) {
+            (Mode::Play | Mode::Paused, Some(_)) if self.survey.is_some() => {
+                let (eye, look) = self.survey.unwrap().eye_look();
+                (eye, look, SURVEY_CAM_PCT)
+            }
             (Mode::Intro, _) => {
                 let k = smooth(ONE * self.intro_t.min(INTRO_TICKS) / INTRO_TICKS);
                 let yaw = heading_to(c.tee, c.lotus);
@@ -1406,6 +1469,8 @@ impl Game {
             particles: &self.particles,
             guide: &self.guide,
             leader,
+            marks: fx::div(self.lift(), MARK_GROW_EVERY).max(ONE),
+            pin: self.survey.map(|s| s.at),
         };
         draw::scene(&mut b, &view);
         let (values, draws) = b.finish(render::DYNAMIC_BUFFER);
@@ -1427,9 +1492,24 @@ impl Game {
             Some(r) if self.mode == Mode::Play => r.players[r.active].body.pos,
             _ => self.course.lotus,
         };
-        let floor = self.course.ground(focus.x, focus.z);
+        // from the survey's height nothing stands between the eye and the frog:
+        // a floor above the eye cuts nothing away
+        let floor = if self.survey.is_some() {
+            self.eye.y + int(10)
+        } else {
+            self.course.ground(focus.x, focus.z)
+        };
         v.extend([focus.x, focus.y, focus.z, floor]);
+        // the fog draws back as the camera climbs, so the hole reads from above
+        let t = &self.course.theme;
+        let back = (self.lift() - SURVEY_FOG_FROM).max(0) * SURVEY_FOG_TIMES;
+        v.extend([t.fog_near + back, t.fog_far + back]);
         v
+    }
+
+    /// How high the camera sits over what it looks at.
+    fn lift(&self) -> i32 {
+        (self.eye.y - self.look.y).max(0)
     }
 
     pub fn static_instances(&self) -> Vec<i32> {
@@ -1469,7 +1549,6 @@ impl Game {
         let mut u = vec![l.x, l.y, l.z];
         u.extend(t.sky);
         u.extend(t.fog);
-        u.extend([t.fog_near, t.fog_far]);
         u.extend(t.light);
         u.extend(t.window_dark);
         u.extend(t.ink);
@@ -1526,6 +1605,7 @@ impl Game {
             Phase::Done => "done",
         };
         let prompt = match (r.phase, human) {
+            _ if self.survey.is_some() => "prompt_survey",
             (Phase::Aim, true) => "prompt_aim",
             (Phase::Meter, true) => "prompt_meter",
             (Phase::Flight, true) => {
@@ -1636,6 +1716,21 @@ impl Game {
             "y": pct(lotus_screen.map(|s| s.1).unwrap_or(0)),
             "dist": c.to_lotus(p.body.pos) / ONE,
         });
+        h["survey"] = match self.survey {
+            Some(s) => {
+                let at = cam.screen(self.aspect, s.at);
+                json!({
+                    "on": at.is_some(),
+                    "x": pct(at.map(|a| a.0).unwrap_or(0)),
+                    "y": pct(at.map(|a| a.1).unwrap_or(0)),
+                    "from": v3(s.at.x - p.body.pos.x, 0, s.at.z - p.body.pos.z).len() / ONE,
+                    "to": c.to_lotus(s.at) / ONE,
+                    "rise": (s.at.y - p.body.pos.y) / ONE,
+                })
+            }
+            None => Value::Null,
+        };
+        h["can_survey"] = json!(self.can_survey());
         h["says"] = json!(says);
         h.to_string()
     }
@@ -1791,6 +1886,7 @@ impl Game {
 /// Every palette colour the core names, checked at load.
 const NAMED_COLOURS: &[&str] = &[
     "ink",
+    "survey_pin",
     "white",
     "pupil",
     "glint",
@@ -1965,8 +2061,8 @@ pub fn numbers() -> String {
         "draw_values": render::DRAW_VALUES,
         "buffers": { "static": render::STATIC_BUFFER, "dynamic": render::DYNAMIC_BUFFER },
         "passes": { "solid": render::PASS_SOLID, "facade": render::PASS_FACADE, "ink": render::PASS_INK, "glow": render::PASS_GLOW },
-        "uniforms": [["uLightDir", 3], ["uSky", 3], ["uFog", 3], ["uFogRange", 2], ["uLight", 3], ["uWindowDark", 3], ["uInk", 3], ["uSee", 4], ["uSeeSolid", 1]],
-        "view": { "matrix": [0, 16], "eye": [16, 19], "focus": [19, 23] },
+        "uniforms": [["uLightDir", 3], ["uSky", 3], ["uFog", 3], ["uLight", 3], ["uWindowDark", 3], ["uInk", 3], ["uSee", 4], ["uSeeSolid", 1]],
+        "view": { "matrix": [0, 16], "eye": [16, 19], "focus": [19, 23], "fog": [23, 25] },
         "slots": SLOTS,
     })
     .to_string()
@@ -2005,7 +2101,7 @@ pub(crate) mod tests {
     fn frames(g: &mut Game, n: i32, bits: u32) {
         for _ in 0..n {
             let now = g.last_us.unwrap_or(0) + FRAME_US;
-            g.advance(now, bits, 0, 0);
+            g.advance(now, bits, 0, 0, 0);
         }
     }
 
@@ -2085,6 +2181,43 @@ pub(crate) mod tests {
             g.round.as_ref().unwrap().phase,
             Phase::Swing | Phase::Flight
         ));
+    }
+
+    #[test]
+    fn the_survey_rises_over_the_hole_and_keeps_its_keys_from_the_round() {
+        let mut g = game();
+        g.begin();
+        g.start_round();
+        g.tee_off();
+        frames(&mut g, 90, 0);
+        let (yaw, power, loft) = {
+            let r = g.round.as_ref().unwrap();
+            assert_eq!(r.phase, Phase::Aim);
+            (r.yaw, r.power, r.loft)
+        };
+        let low = g.eye.y;
+        frames(&mut g, 1, bit("survey"));
+        assert!(g.survey.is_some(), "V opens the survey");
+        let opened = g.survey.unwrap().at;
+        // the steering, power and loft keys move the view, not the shot
+        frames(&mut g, 60, bit("left") | bit("forward") | bit("zoom_out"));
+        frames(&mut g, 1, bit("loft"));
+        frames(&mut g, 60, 0);
+        let r = g.round.as_ref().unwrap();
+        assert_eq!((r.yaw, r.power, r.loft, r.phase), (yaw, power, loft, Phase::Aim));
+        assert_ne!(g.survey.unwrap().at, opened, "the keys panned the view");
+        assert!(g.eye.y > low + int(60), "the camera is high over the hole");
+        let h: Value = serde_json::from_str(&g.hud_json()).unwrap();
+        assert_eq!(h["prompt"], "prompt_survey");
+        assert!(h["survey"]["to"].as_i64().unwrap() > 0);
+        // Space closes it and is not a swing; the camera comes back down
+        frames(&mut g, 1, bit("swing"));
+        assert!(g.survey.is_none());
+        assert_eq!(g.round.as_ref().unwrap().phase, Phase::Aim);
+        frames(&mut g, 120, 0);
+        assert!(g.eye.y < low + int(2), "back at the catapult");
+        let h: Value = serde_json::from_str(&g.hud_json()).unwrap();
+        assert_eq!(h["survey"], Value::Null);
     }
 
     #[test]
@@ -2182,7 +2315,7 @@ pub(crate) mod tests {
             self.frame += 1;
             for (k, g) in self.games.iter_mut().enumerate() {
                 let now = g.last_us.unwrap_or(0) + 16_667;
-                g.advance(now, bits.get(k).copied().unwrap_or(0), 0, 0);
+                g.advance(now, bits.get(k).copied().unwrap_or(0), 0, 0, 0);
                 let out: Vec<(u32, String)> = serde_json::from_str(&g.net_outbox()).unwrap();
                 for (to, text) in out {
                     let to_index = if k == 0 { to as usize } else { 0 };
@@ -2343,8 +2476,17 @@ pub(crate) mod tests {
         assert_eq!(draws.len() % dv, 0);
         assert!(!g.terrain_vertices().is_empty());
         assert_eq!(g.terrain_vertices().len() % mesh::VERTEX_VALUES, 0);
-        assert_eq!(g.view().len(), 23);
-        assert_eq!(g.scene_uniforms().len(), 3 + 3 + 3 + 2 + 3 + 3 + 3 + 4 + 1);
+        // matrix, eye, focus (with its floor), then the fog's range
+        assert_eq!(g.view().len(), 16 + 3 + 4 + 2);
+        assert_eq!(n["view"]["fog"][1].as_u64(), Some(25));
+        assert_eq!(g.scene_uniforms().len(), 3 + 3 + 3 + 3 + 3 + 3 + 4 + 1);
+        let sizes: u64 = n["uniforms"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|u| u[1].as_u64().unwrap())
+            .sum();
+        assert_eq!(sizes as usize, g.scene_uniforms().len());
         // every draw's instances lie inside its buffer
         for d in draws.chunks(dv) {
             let len = if d[0] == render::STATIC_BUFFER {

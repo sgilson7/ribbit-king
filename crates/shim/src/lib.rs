@@ -38,12 +38,13 @@ impl Game {
     }
 
     /// The page's clock in milliseconds, held action bits, mouse movement in CSS pixels.
-    pub fn advance(&mut self, now_ms: f64, bits: u32, dx: f64, dy: f64) {
+    pub fn advance(&mut self, now_ms: f64, bits: u32, dx: f64, dy: f64, wheel: f64) {
         self.inner.advance(
             (now_ms * 1000.0) as i64,
             bits,
             (dx * 100.0) as i32,
             (dy * 100.0) as i32,
+            (wheel * 100.0) as i32,
         )
     }
 

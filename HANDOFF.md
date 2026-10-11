@@ -1,6 +1,22 @@
 # Handoff
 
-11 October 2026, round 3: the playtest changes are built, deployed and listed.
+11 October 2026, round 4: the survey view is built and deployed. Round 3 follows.
+
+## Round 4: survey the hole
+
+Press V or M, or click Survey under the hole's name. The camera rises over the hole until the frog and the lotus are both in view (PLAN P34). Controls while surveying:
+
+- W A S D pan the view.
+- The wheel or + and − zoom it.
+- Dragging turns it.
+
+A pin on the ground reports how far it is from the frog, how far from it to the lotus, and how much higher or lower it sits. The aiming arc stays drawn and scaled up so it shows from above. V, Space or X comes back down. The survey moves only the person's own camera, so it works on any turn and online it affects nobody else.
+
+| Check | Result |
+| --- | --- |
+| `./scripts/check.sh` | BUILDER CHECK PASSED. 77 core tests (4 new for the survey), 12 boundary tests; browser check (now opens, zooms and closes the survey) and four-browser online check in Chromium, Firefox and WebKit |
+| Frame rate, 1280×720, Chromium | 60 fps aiming and 60 fps surveying on the GPU; 5–5.5 fps for both on a software renderer |
+
 
 ## Round 3: playtest changes
 

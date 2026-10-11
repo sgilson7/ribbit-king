@@ -25,6 +25,10 @@ Done means: up to four people, each in their own browser, play one round togethe
 >
 > heres more: There are moving snail obstacles in the swamp course that will block your frog bounces. There are antlion pits in the desert oasis map that will grab your frog and end your turn. There are whirlpools in the water features of the swamp map that will spin your frog around and change it's direction.
 
+## Round 4 (Sam, 11 October 2026)
+
+> excellent so far; there should be a way to zoom out and inspect the hole youre on so you can plan a bit better how you will proceed
+
 ## Done means
 
 A 3D browser game, deployed on GitHub Pages and listed on sgilson7.github.io, in which up to four frogs (people or CPU) play a round on four themed holes with every mechanic above, built as a Builder project whose `./scripts/check.sh` passes.

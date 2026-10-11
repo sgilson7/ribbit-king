@@ -34,6 +34,8 @@ It is a fan game after Bandai's *Ribbit King* (GameCube, 2003), built from a des
 | Space or Enter | Start the meter; whack; jump in the air |
 | X | Back out of the meter |
 | E | Tongue (10 flies) |
+| V or M | Survey the hole from above, and back (W A S D move, drag turns) |
+| + − or wheel | Zoom the survey |
 | Mouse drag | Look around |
 | Esc · N | Pause · Sound on or off |
 
