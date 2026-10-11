@@ -1,0 +1,287 @@
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage{xcolor}
+\usetikzlibrary{calc}
+% Palette: Sam_Comm_final.png by eye, each course's own, and data/frogs.json.
+\definecolor{ink}{HTML}{3B2340}
+\definecolor{sky}{HTML}{EFC46A}
+\definecolor{skyhi}{HTML}{F5DA92}
+\definecolor{skylow}{HTML}{E9B060}
+\definecolor{cloud}{HTML}{F2D58A}
+\definecolor{paper}{HTML}{FBEFD0}
+\definecolor{cream}{HTML}{FFF6E0}
+\definecolor{white}{HTML}{FFFFFF}
+\definecolor{wallA}{HTML}{E88A73}
+\definecolor{wallB}{HTML}{EE9F7E}
+\definecolor{wallC}{HTML}{E47A7E}
+\definecolor{wallD}{HTML}{F0B07E}
+\definecolor{wallE}{HTML}{D9765F}
+\definecolor{wallF}{HTML}{E99A8A}
+\definecolor{greenA}{HTML}{8DBB7E}
+\definecolor{greenB}{HTML}{6FA77A}
+\definecolor{greenC}{HTML}{A9C97F}
+\definecolor{greenD}{HTML}{5E9C6A}
+\definecolor{greenE}{HTML}{4A8060}
+\definecolor{meadow}{HTML}{B5CF86}
+\definecolor{meadowdark}{HTML}{9DBE74}
+\definecolor{window}{HTML}{F6E7A0}
+\definecolor{windark}{HTML}{8C5A64}
+\definecolor{metal}{HTML}{8D9A93}
+\definecolor{metaldark}{HTML}{5E6B66}
+\definecolor{wood}{HTML}{B9835A}
+\definecolor{wooddark}{HTML}{8C5A3C}
+\definecolor{woodlight}{HTML}{D9A66F}
+\definecolor{rope}{HTML}{E3C48A}
+\definecolor{stone}{HTML}{E7C9A0}
+\definecolor{stonedark}{HTML}{C9A47E}
+\definecolor{road}{HTML}{8E7A86}
+\definecolor{roadline}{HTML}{F6E7A0}
+\definecolor{kerb}{HTML}{D8B48C}
+\definecolor{red}{HTML}{E0483E}
+\definecolor{redlight}{HTML}{F27A6A}
+\definecolor{gold}{HTML}{FFB000}
+\definecolor{goldlight}{HTML}{FFD54F}
+\definecolor{bell}{HTML}{F2B53A}
+\definecolor{teal}{HTML}{4FA3A0}
+\definecolor{tealdark}{HTML}{3C8582}
+\definecolor{magenta}{HTML}{FF2E88}
+\definecolor{cyan}{HTML}{13CFE3}
+\definecolor{violet}{HTML}{8A5BD6}
+\definecolor{water}{HTML}{6FB3A8}
+\definecolor{waterlight}{HTML}{9FD3C6}
+\definecolor{waterdark}{HTML}{4F8E86}
+\definecolor{pad}{HTML}{7DB86A}
+\definecolor{paddark}{HTML}{5C9A52}
+\definecolor{padlight}{HTML}{A6D38A}
+\definecolor{reed}{HTML}{8DB26A}
+\definecolor{cattail}{HTML}{8A5A3C}
+\definecolor{moss}{HTML}{A8B88E}
+\definecolor{cypress}{HTML}{5E8A5A}
+\definecolor{cypressdark}{HTML}{4A7048}
+\definecolor{lotus}{HTML}{F48FB1}
+\definecolor{lotusdark}{HTML}{E06C98}
+\definecolor{lotuslight}{HTML}{FAD0DF}
+\definecolor{lotuscentre}{HTML}{FFD54F}
+\definecolor{lotusseed}{HTML}{E0A82E}
+\definecolor{flybody}{HTML}{2B2530}
+\definecolor{flyeye}{HTML}{E0242E}
+\definecolor{flywing}{HTML}{F4F8FA}
+\definecolor{mushred}{HTML}{E23B2E}
+\definecolor{mushspot}{HTML}{FFF5E0}
+\definecolor{stem}{HTML}{F2E2C2}
+\definecolor{blush}{HTML}{F48FB1}
+\definecolor{pupil}{HTML}{1A1220}
+\definecolor{spider}{HTML}{3B2340}
+\definecolor{swampskyhi}{HTML}{E9E3A0}
+\definecolor{swampsky}{HTML}{D9D184}
+\definecolor{swampskylow}{HTML}{C9C478}
+\definecolor{swampcloud}{HTML}{EEE9B4}
+\definecolor{swampwater}{HTML}{4F8A7F}
+\definecolor{swampwaterlight}{HTML}{7AAE9C}
+\definecolor{swampwaterdark}{HTML}{3F7268}
+\definecolor{log}{HTML}{9A6A48}
+\definecolor{logend}{HTML}{D9A66F}
+\definecolor{dunehi}{HTML}{F7DFA0}
+\definecolor{dunesky}{HTML}{F2C47A}
+\definecolor{duneskylow}{HTML}{EBA865}
+\definecolor{sand}{HTML}{EBC27C}
+\definecolor{sandlight}{HTML}{F4D69C}
+\definecolor{sanddark}{HTML}{D9A35E}
+\definecolor{sanddeep}{HTML}{C98C4E}
+\definecolor{sun}{HTML}{FFE6A3}
+\definecolor{cactus}{HTML}{6FA77A}
+\definecolor{cactusdark}{HTML}{4F8A60}
+\definecolor{palmtrunk}{HTML}{B98A5A}
+\definecolor{rock}{HTML}{C98C6A}
+\definecolor{awning}{HTML}{4FA3A0}
+\definecolor{carA}{HTML}{4FA3A0}
+\definecolor{carB}{HTML}{F2B53A}
+\definecolor{carC}{HTML}{E47A7E}
+\definecolor{carD}{HTML}{8DBB7E}
+\definecolor{glass}{HTML}{BFE3E0}
+\definecolor{duskhi}{HTML}{6B4A6E}
+\definecolor{dusk}{HTML}{B9607A}
+\definecolor{dusklow}{HTML}{E9906A}
+\definecolor{duskcloud}{HTML}{8E6680}
+\definecolor{smoke}{HTML}{9C8494}
+\definecolor{smokedark}{HTML}{7E6878}
+\definecolor{basalt}{HTML}{4A3A4A}
+\definecolor{basaltdark}{HTML}{352838}
+\definecolor{basalttop}{HTML}{6E5868}
+\definecolor{rockface}{HTML}{5E4A5C}
+\definecolor{lava}{HTML}{FF6A1A}
+\definecolor{lavagold}{HTML}{FFB000}
+\definecolor{lavadark}{HTML}{C9481A}
+\definecolor{pool}{HTML}{5FB8B0}
+\definecolor{poollight}{HTML}{9FE0D6}
+\definecolor{crown}{HTML}{FFC23A}
+\definecolor{crowndark}{HTML}{E09A1A}
+\definecolor{jewel}{HTML}{E0483E}
+\definecolor{jewelb}{HTML}{4FA3A0}
+\definecolor{limeskin}{HTML}{7BC043}
+\definecolor{limebelly}{HTML}{F4E8B0}
+\definecolor{limemark}{HTML}{3C7DC4}
+\definecolor{limeeye}{HTML}{E23B2E}
+\definecolor{limefeet}{HTML}{F2913D}
+\definecolor{azureskin}{HTML}{2E6FD8}
+\definecolor{azurebelly}{HTML}{1F4FA0}
+\definecolor{azuremark}{HTML}{16163A}
+\definecolor{azureeye}{HTML}{16163A}
+\definecolor{azurefeet}{HTML}{1F4FA0}
+\definecolor{bumbleskin}{HTML}{232028}
+\definecolor{bumblebelly}{HTML}{2E2A33}
+\definecolor{bumblemark}{HTML}{F6CF2E}
+\definecolor{bumbleeye}{HTML}{16163A}
+\definecolor{bumblefeet}{HTML}{232028}
+\definecolor{tomatoskin}{HTML}{E2522F}
+\definecolor{tomatobelly}{HTML}{F6D9B8}
+\definecolor{tomatomark}{HTML}{B83A22}
+\definecolor{tomatoeye}{HTML}{3A2A1E}
+\definecolor{tomatofeet}{HTML}{C9442A}
+\definecolor{bufoskin}{HTML}{9A7A4E}
+\definecolor{bufobelly}{HTML}{E8D6A8}
+\definecolor{bufomark}{HTML}{6B5233}
+\definecolor{bufoeye}{HTML}{E8B83A}
+\definecolor{bufofeet}{HTML}{8A6C44}
+\definecolor{goldieskin}{HTML}{F59A1B}
+\definecolor{goldiebelly}{HTML}{F8C25A}
+\definecolor{goldiemark}{HTML}{D97C0E}
+\definecolor{goldieeye}{HTML}{2A1A10}
+\definecolor{goldiefeet}{HTML}{E8890F}
+\definecolor{chompskin}{HTML}{A7C957}
+\definecolor{chompbelly}{HTML}{F2E6B8}
+\definecolor{chompmark}{HTML}{6A4A2E}
+\definecolor{chompeye}{HTML}{C9A227}
+\definecolor{chompfeet}{HTML}{8DAF45}
+\definecolor{glassyskin}{HTML}{B9E3C6}
+\definecolor{glassybelly}{HTML}{E4F4EA}
+\definecolor{glassymark}{HTML}{F2E25C}
+\definecolor{glassyeye}{HTML}{E9E0C8}
+\definecolor{glassyfeet}{HTML}{9FD3B0}
+\newcommand{\Ink}{1.7pt}
+\tikzset{inked/.style={draw=ink, line width=\Ink, line join=round, line cap=round}}
+\begin{document}
+\begin{tikzpicture}
+\clip (0,0) rectangle (6,6);
+\filldraw[inked,fill=paper] (3,3) circle (2.88);
+\fill[water, opacity=0.35] (3.0,1.15) ellipse (2.55 and 0.75);
+\filldraw[inked,fill=pad] (3,1.2) -- ($(3,1.2)+(301:2.35 and 0.62)$) arc[start angle=301, end angle=629, x radius=2.35, y radius=0.62] -- cycle;
+\draw[paddark, line width=0.7pt] (3,1.2) -- (4.587,0.958);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (4.771,1.325);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (3.916,1.619);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (2.526,1.667);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (1.413,1.442);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (1.229,1.075);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (2.084,0.781);
+\fill[padlight, opacity=0.6] (2.178,1.417) ellipse (0.517 and 0.099);
+\fill[ink, opacity=0.18] (3.0,1.08) ellipse (1.9 and 0.28);
+\begin{scope}[shift={(3,1.15)}, rotate=0, xscale=1.05, yscale=1.05]
+\filldraw[inked,fill=azurefeet] (-1.98,0.05) .. controls (-2.005,-0.231) .. (-2.224,-0.409) .. controls (-2.199,-0.128) .. (-1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (-2.224,-0.409) circle (0.11);
+\filldraw[inked,fill=azurefeet] (-1.98,0.05) .. controls (-2.126,-0.192) .. (-2.401,-0.256) .. controls (-2.255,-0.014) .. (-1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (-2.401,-0.256) circle (0.11);
+\filldraw[inked,fill=azurefeet] (-1.98,0.05) .. controls (-2.217,-0.103) .. (-2.492,-0.04) .. controls (-2.255,0.113) .. (-1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (-2.492,-0.04) circle (0.11);
+\filldraw[inked,fill=azurefeet] (-1.98,0.05) .. controls (-2.26,0.016) .. (-2.48,0.193) .. controls (-2.2,0.227) .. (-1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (-2.48,0.193) circle (0.11);
+\filldraw[inked,fill=azurefeet] (-1.98,0.05) circle (0.22);
+\filldraw[inked,fill=azurefeet] (1.98,0.05) .. controls (2.199,-0.128) .. (2.224,-0.409) .. controls (2.005,-0.231) .. (1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (2.224,-0.409) circle (0.11);
+\filldraw[inked,fill=azurefeet] (1.98,0.05) .. controls (2.255,-0.014) .. (2.401,-0.256) .. controls (2.126,-0.192) .. (1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (2.401,-0.256) circle (0.11);
+\filldraw[inked,fill=azurefeet] (1.98,0.05) .. controls (2.255,0.113) .. (2.492,-0.04) .. controls (2.217,-0.103) .. (1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (2.492,-0.04) circle (0.11);
+\filldraw[inked,fill=azurefeet] (1.98,0.05) .. controls (2.2,0.227) .. (2.48,0.193) .. controls (2.26,0.016) .. (1.98,0.05) -- cycle;
+\filldraw[inked,fill=azurefeet] (2.48,0.193) circle (0.11);
+\filldraw[inked,fill=azurefeet] (1.98,0.05) circle (0.22);
+\fill[azureskin] plot[smooth cycle, tension=0.7] coordinates {(0,0) (1.45,0.1) (1.98,0.8) (1.88,1.95) (1.4,2.85) (0,3.18) (-1.4,2.85) (-1.88,1.95) (-1.98,0.8) (-1.45,0.1)};
+\begin{scope}\clip plot[smooth cycle, tension=0.7] coordinates {(0,0) (1.45,0.1) (1.98,0.8) (1.88,1.95) (1.4,2.85) (0,3.18) (-1.4,2.85) (-1.88,1.95) (-1.98,0.8) (-1.45,0.1)};
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.367,1.678) circle (0.241);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.894,1.375) circle (0.145);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.067,1.184) circle (0.176);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.024,2.137) circle (0.172);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (0.51,1.457) circle (0.235);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.307,2.666) circle (0.198);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.147,0.596) circle (0.149);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.166,1.054) circle (0.173);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.29,3.092) circle (0.133);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (0.452,2.935) circle (0.143);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (0.958,2.386) circle (0.191);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.95,1.665) circle (0.143);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.62,0.282) circle (0.214);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.664,1.469) circle (0.251);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.307,2.863) circle (0.204);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (0.455,0.147) circle (0.167);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.97,2.123) circle (0.257);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.812,2.715) circle (0.148);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.885,0.794) circle (0.249);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.592,0.104) circle (0.176);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.729,2.114) circle (0.198);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.062,0.486) circle (0.239);
+\end{scope}
+\draw[inked] plot[smooth cycle, tension=0.7] coordinates {(0,0) (1.45,0.1) (1.98,0.8) (1.88,1.95) (1.4,2.85) (0,3.18) (-1.4,2.85) (-1.88,1.95) (-1.98,0.8) (-1.45,0.1)};
+\fill[azurebelly] plot[smooth cycle, tension=0.7] coordinates {(0.05,0.12) (1,0.22) (1.2,0.9) (0.95,1.6) (0.05,1.8) (-0.85,1.6) (-1.1,0.9) (-0.9,0.22)};
+\draw[inked] plot[smooth cycle, tension=0.7] coordinates {(0.05,0.12) (1,0.22) (1.2,0.9) (0.95,1.6) (0.05,1.8) (-0.85,1.6) (-1.1,0.9) (-0.9,0.22)};
+\fill[azureskin] [rotate around={18:(-1.5,0.66)}] (-1.5,0.66) ellipse (0.8 and 0.58);
+\begin{scope}\clip [rotate around={18:(-1.5,0.66)}] (-1.5,0.66) ellipse (0.8 and 0.58);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-0.924,0.538) circle (0.141);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.431,0.623) circle (0.146);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-1.666,0.222) circle (0.134);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-2.132,0.74) circle (0.145);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (-2.245,0.368) circle (0.09);
+\end{scope}
+\draw[inked] [rotate around={18:(-1.5,0.66)}] (-1.5,0.66) ellipse (0.8 and 0.58);
+\fill[azureskin] [rotate around={-18:(1.5,0.66)}] (1.5,0.66) ellipse (0.8 and 0.58);
+\begin{scope}\clip [rotate around={-18:(1.5,0.66)}] (1.5,0.66) ellipse (0.8 and 0.58);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (0.806,0.526) circle (0.101);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (2.127,0.392) circle (0.116);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.813,0.969) circle (0.131);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.538,0.539) circle (0.169);
+\filldraw[inked,fill=azuremark,line width=0.7pt] (1.21,0.264) circle (0.094);
+\end{scope}
+\draw[inked] [rotate around={-18:(1.5,0.66)}] (1.5,0.66) ellipse (0.8 and 0.58);
+\filldraw[inked,fill=azureskin] plot[smooth cycle, tension=0.5] coordinates {(-0.665,1.7) (-0.879,0.939) (-0.46,0.296) (-0.74,0.104) (-1.281,0.861) (-1.135,1.8)};
+\filldraw[inked,fill=azuremark,line width=0.5pt] (-1.08,0.9) circle (0.09);
+\filldraw[inked,fill=azurefeet] (-0.6,0.2) .. controls (-0.411,0.146) .. (-0.324,-0.031) .. controls (-0.514,0.023) .. (-0.6,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (-0.324,-0.031) circle (0.09);
+\filldraw[inked,fill=azurefeet] (-0.6,0.2) .. controls (-0.468,0.054) .. (-0.489,-0.142) .. controls (-0.62,0.004) .. (-0.6,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (-0.489,-0.142) circle (0.09);
+\filldraw[inked,fill=azurefeet] (-0.6,0.2) .. controls (-0.566,0.006) .. (-0.687,-0.149) .. controls (-0.721,0.045) .. (-0.6,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (-0.687,-0.149) circle (0.09);
+\filldraw[inked,fill=azurefeet] (-0.6,0.2) .. controls (-0.674,0.017) .. (-0.859,-0.05) .. controls (-0.785,0.133) .. (-0.6,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (-0.859,-0.05) circle (0.09);
+\filldraw[inked,fill=azurefeet] (-0.6,0.2) circle (0.17);
+\filldraw[inked,fill=azureskin] plot[smooth cycle, tension=0.5] coordinates {(1.335,1.8) (1.481,0.861) (0.94,0.104) (0.66,0.296) (1.079,0.939) (0.865,1.7)};
+\filldraw[inked,fill=azuremark,line width=0.5pt] (1.28,0.9) circle (0.09);
+\filldraw[inked,fill=azurefeet] (0.8,0.2) .. controls (0.714,0.023) .. (0.524,-0.031) .. controls (0.611,0.146) .. (0.8,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (0.524,-0.031) circle (0.09);
+\filldraw[inked,fill=azurefeet] (0.8,0.2) .. controls (0.82,0.004) .. (0.689,-0.142) .. controls (0.668,0.054) .. (0.8,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (0.689,-0.142) circle (0.09);
+\filldraw[inked,fill=azurefeet] (0.8,0.2) .. controls (0.921,0.045) .. (0.887,-0.149) .. controls (0.766,0.006) .. (0.8,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (0.887,-0.149) circle (0.09);
+\filldraw[inked,fill=azurefeet] (0.8,0.2) .. controls (0.985,0.133) .. (1.059,-0.05) .. controls (0.874,0.017) .. (0.8,0.2) -- cycle;
+\filldraw[inked,fill=azurefeet] (1.059,-0.05) circle (0.09);
+\filldraw[inked,fill=azurefeet] (0.8,0.2) circle (0.17);
+\fill[ink] (-0.1,2.72) circle (0.05);
+\fill[blush, opacity=0.6] (-1.2,2.12) ellipse (0.26 and 0.14);
+\fill[ink] (0.3,2.72) circle (0.05);
+\fill[blush, opacity=0.6] (1.4,2.12) ellipse (0.26 and 0.14);
+\draw[ink, line width=2.125pt, line cap=round] (-0.9,2.38) .. controls (-0.4,1.8) and (0.6,1.8) .. (1.1,2.38);
+\draw[ink, line width=1.7pt, line cap=round] (-0.82,2.3) -- (-0.98,2.44);
+\draw[ink, line width=1.7pt, line cap=round] (1.02,2.3) -- (1.18,2.44);
+\filldraw[inked,fill=azureskin] (-0.87,3.28) circle (0.74);
+\filldraw[inked,fill=azureeye] (-0.87,3.31) circle (0.57);
+\draw[white, opacity=0.22, line width=2.72pt] (-0.87,3.31) circle (0.445);
+\fill[pupil] (-0.77,3.27) circle (0.285);
+\fill[white, opacity=0.9] (-1.069,3.527) circle (0.148);
+\fill[white, opacity=0.9] (-0.688,3.105) circle (0.063);
+\draw[inked] (-0.87,3.31) circle (0.57);
+\filldraw[inked,fill=azureskin] (1.07,3.28) circle (0.696);
+\filldraw[inked,fill=azureeye] (1.07,3.31) circle (0.536);
+\draw[white, opacity=0.22, line width=2.72pt] (1.07,3.31) circle (0.418);
+\fill[pupil] (1.05,3.27) circle (0.268);
+\fill[white, opacity=0.9] (0.882,3.514) circle (0.139);
+\fill[white, opacity=0.9] (1.241,3.117) circle (0.059);
+\draw[inked] (1.07,3.31) circle (0.536);
+\end{scope}
+\end{tikzpicture}
+\end{document}

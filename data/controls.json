@@ -1,0 +1,16 @@
+{
+  "KeyA": "left",
+  "KeyD": "right",
+  "KeyW": "forward",
+  "KeyS": "back",
+  "ArrowLeft": "left",
+  "ArrowRight": "right",
+  "ArrowUp": "forward",
+  "ArrowDown": "back",
+  "Space": "swing",
+  "Enter": "swing",
+  "KeyE": "tongue",
+  "KeyQ": "loft",
+  "KeyX": "cancel",
+  "Backspace": "cancel"
+}

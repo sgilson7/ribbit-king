@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Reference default. connect-src 'self' keeps fetches on this origin;
+       'wasm-unsafe-eval' lets the page compile its own WebAssembly module;
+       form-action 'none' blocks form posts. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Ribbit King</title>
+  <meta name="description" content="Frolf in the browser: golf played with frogs. Whack your frog off a catapult, fly it through flies, lily pads, webs and mushrooms, and land it in the lotus. Four holes, up to four frogs, people or CPU.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-ready="false" data-mode="loading">
+  <canvas id="view"></canvas>
+
+  <!-- play -->
+  <div id="hud" hidden>
+    <div id="tags"></div>
+    <div id="lotus-tag" hidden><span class="pin"></span><span id="lotus-dist"></span></div>
+    <div id="top-left" class="panel">
+      <div class="hole-name" id="h-hole"></div>
+      <div class="hole-sub"><span id="h-of"></span> · <span id="h-par"></span></div>
+    </div>
+    <div id="top-right" class="panel">
+      <ol id="h-standings"></ol>
+    </div>
+    <div id="player-card" class="panel">
+      <img id="p-face" alt="">
+      <div class="p-text">
+        <div class="p-name" id="p-name"></div>
+        <div class="p-stroke" id="p-stroke"></div>
+      </div>
+      <div class="p-gear">
+        <span class="gear" id="g-flies"><img src="art/icons/fly.png" alt=""><span id="p-flies"></span></span>
+        <span class="gear" id="g-tongue" hidden><img src="art/icons/tongue.png" alt=""><span data-copy="tongue_ready"></span></span>
+        <span class="gear" id="g-jumps" hidden><img src="art/icons/jump.png" alt=""><span id="p-jumps"></span></span>
+        <span class="gear" id="g-wings" hidden><img src="art/icons/wings.png" alt=""><span id="p-wings"></span></span>
+      </div>
+    </div>
+    <div id="prompt"></div>
+    <div id="toasts"></div>
+    <div id="meter-box" hidden>
+      <svg id="meter" viewBox="0 0 200 200" aria-hidden="true">
+        <circle class="dial" cx="100" cy="100" r="92"></circle>
+        <circle class="track" cx="100" cy="100" r="80"></circle>
+        <path id="m-bar" class="bar"></path>
+        <path id="m-perfect" class="perfect"></path>
+        <line id="m-needle" class="needle" x1="100" y1="100" x2="100" y2="10"></line>
+        <circle class="hub" cx="100" cy="100" r="9"></circle>
+      </svg>
+      <div class="meter-readout">
+        <div><span class="label" data-copy="power"></span> <b id="m-power"></b></div>
+        <div><span class="label" data-copy="loft"></span> <b id="m-loft"></b></div>
+        <div class="dist"><img src="art/icons/lotus.png" alt=""><b id="m-dist"></b></div>
+      </div>
+    </div>
+    <div id="touch" hidden>
+      <button data-hold="left">◀</button>
+      <button data-hold="forward">▲</button>
+      <button data-hold="back">▼</button>
+      <button data-hold="right">▶</button>
+      <button data-hold="loft" data-copy="touch_loft"></button>
+      <button data-hold="tongue" data-copy="touch_tongue"></button>
+      <button data-hold="swing" class="big" data-copy="touch_swing"></button>
+    </div>
+  </div>
+
+  <!-- title -->
+  <section id="title" class="overlay art-bg" hidden>
+    <img class="backdrop" src="art/title.png" alt="">
+    <div class="title-box">
+      <h1 data-copy="title"></h1>
+      <p class="tagline" data-copy="tagline"></p>
+      <div class="buttons">
+        <button id="play" class="primary" data-copy="play"></button>
+        <button class="open-help" data-copy="how"></button>
+      </div>
+      <p class="fine" data-copy="fan_note"></p>
+    </div>
+  </section>
+
+  <!-- setup -->
+  <section id="setup" class="overlay sheet-bg" hidden>
+    <div class="sheet wide">
+      <h2 data-copy="setup_title"></h2>
+      <p class="hint" data-copy="setup_hint"></p>
+      <div id="slots"></div>
+      <div class="course-row">
+        <span class="label" data-copy="course_label"></span>
+        <button id="course-prev" class="arrow" aria-label="previous course">◀</button>
+        <span id="course-name"></span>
+        <button id="course-next" class="arrow" aria-label="next course">▶</button>
+      </div>
+      <p class="fine" id="best-round"></p>
+      <div class="buttons">
+        <button id="setup-back" data-copy="back"></button>
+        <button class="open-help" data-copy="how"></button>
+        <button id="start" class="primary" data-copy="start"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- the card before each hole -->
+  <section id="intro" class="overlay art-bg" hidden>
+    <img class="backdrop" id="intro-art" alt="">
+    <div class="title-box">
+      <div class="kicker" id="i-of"></div>
+      <h2 id="i-name"></h2>
+      <p><span id="i-par"></span> · <span id="i-length"></span></p>
+      <p class="fine" id="i-best"></p>
+      <div id="i-frogs"></div>
+      <div class="buttons">
+        <button id="tee-off" class="primary" data-copy="tee_off"></button>
+      </div>
+      <p class="fine" data-copy="tee_off_hint"></p>
+    </div>
+  </section>
+
+  <!-- scorecard between holes, and the final card -->
+  <section id="card" class="overlay sheet-bg" hidden>
+    <div class="sheet wide">
+      <img class="crown-art" id="crown-art" src="art/crown.png" alt="" hidden>
+      <h2 id="c-title"></h2>
+      <p class="hint" id="c-sub"></p>
+      <div class="table-wrap"><table id="c-table"></table></div>
+      <div class="buttons">
+        <button id="card-quit" data-copy="to_title"></button>
+        <button id="card-next" class="primary"></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="paused" class="overlay sheet-bg" hidden>
+    <div class="sheet">
+      <h2 data-copy="paused"></h2>
+      <div class="buttons column">
+        <button id="resume" class="primary" data-copy="resume"></button>
+        <button class="open-help" data-copy="how"></button>
+        <button id="mute" data-copy="sound"></button>
+        <button id="quit" data-copy="quit"></button>
+      </div>
+    </div>
+  </section>
+
+  <section id="help" class="overlay sheet-bg" hidden>
+    <div class="sheet wide scroll">
+      <h2 data-copy="help_title"></h2>
+      <p data-copy="help_intro"></p>
+      <dl id="help-rows"></dl>
+      <h3 data-copy="controls_title"></h3>
+      <table class="controls" id="help-keys"></table>
+      <div class="buttons">
+        <button id="help-close" class="primary" data-copy="close"></button>
+      </div>
+    </div>
+  </section>
+
+  <div id="loading" data-copy="loading"></div>
+  <p id="message"></p>
+  <span id="build"></span>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

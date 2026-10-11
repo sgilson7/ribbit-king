@@ -1,0 +1,213 @@
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage{xcolor}
+\usetikzlibrary{calc}
+% Palette: Sam_Comm_final.png by eye, each course's own, and data/frogs.json.
+\definecolor{ink}{HTML}{3B2340}
+\definecolor{sky}{HTML}{EFC46A}
+\definecolor{skyhi}{HTML}{F5DA92}
+\definecolor{skylow}{HTML}{E9B060}
+\definecolor{cloud}{HTML}{F2D58A}
+\definecolor{paper}{HTML}{FBEFD0}
+\definecolor{cream}{HTML}{FFF6E0}
+\definecolor{white}{HTML}{FFFFFF}
+\definecolor{wallA}{HTML}{E88A73}
+\definecolor{wallB}{HTML}{EE9F7E}
+\definecolor{wallC}{HTML}{E47A7E}
+\definecolor{wallD}{HTML}{F0B07E}
+\definecolor{wallE}{HTML}{D9765F}
+\definecolor{wallF}{HTML}{E99A8A}
+\definecolor{greenA}{HTML}{8DBB7E}
+\definecolor{greenB}{HTML}{6FA77A}
+\definecolor{greenC}{HTML}{A9C97F}
+\definecolor{greenD}{HTML}{5E9C6A}
+\definecolor{greenE}{HTML}{4A8060}
+\definecolor{meadow}{HTML}{B5CF86}
+\definecolor{meadowdark}{HTML}{9DBE74}
+\definecolor{window}{HTML}{F6E7A0}
+\definecolor{windark}{HTML}{8C5A64}
+\definecolor{metal}{HTML}{8D9A93}
+\definecolor{metaldark}{HTML}{5E6B66}
+\definecolor{wood}{HTML}{B9835A}
+\definecolor{wooddark}{HTML}{8C5A3C}
+\definecolor{woodlight}{HTML}{D9A66F}
+\definecolor{rope}{HTML}{E3C48A}
+\definecolor{stone}{HTML}{E7C9A0}
+\definecolor{stonedark}{HTML}{C9A47E}
+\definecolor{road}{HTML}{8E7A86}
+\definecolor{roadline}{HTML}{F6E7A0}
+\definecolor{kerb}{HTML}{D8B48C}
+\definecolor{red}{HTML}{E0483E}
+\definecolor{redlight}{HTML}{F27A6A}
+\definecolor{gold}{HTML}{FFB000}
+\definecolor{goldlight}{HTML}{FFD54F}
+\definecolor{bell}{HTML}{F2B53A}
+\definecolor{teal}{HTML}{4FA3A0}
+\definecolor{tealdark}{HTML}{3C8582}
+\definecolor{magenta}{HTML}{FF2E88}
+\definecolor{cyan}{HTML}{13CFE3}
+\definecolor{violet}{HTML}{8A5BD6}
+\definecolor{water}{HTML}{6FB3A8}
+\definecolor{waterlight}{HTML}{9FD3C6}
+\definecolor{waterdark}{HTML}{4F8E86}
+\definecolor{pad}{HTML}{7DB86A}
+\definecolor{paddark}{HTML}{5C9A52}
+\definecolor{padlight}{HTML}{A6D38A}
+\definecolor{reed}{HTML}{8DB26A}
+\definecolor{cattail}{HTML}{8A5A3C}
+\definecolor{moss}{HTML}{A8B88E}
+\definecolor{cypress}{HTML}{5E8A5A}
+\definecolor{cypressdark}{HTML}{4A7048}
+\definecolor{lotus}{HTML}{F48FB1}
+\definecolor{lotusdark}{HTML}{E06C98}
+\definecolor{lotuslight}{HTML}{FAD0DF}
+\definecolor{lotuscentre}{HTML}{FFD54F}
+\definecolor{lotusseed}{HTML}{E0A82E}
+\definecolor{flybody}{HTML}{2B2530}
+\definecolor{flyeye}{HTML}{E0242E}
+\definecolor{flywing}{HTML}{F4F8FA}
+\definecolor{mushred}{HTML}{E23B2E}
+\definecolor{mushspot}{HTML}{FFF5E0}
+\definecolor{stem}{HTML}{F2E2C2}
+\definecolor{blush}{HTML}{F48FB1}
+\definecolor{pupil}{HTML}{1A1220}
+\definecolor{spider}{HTML}{3B2340}
+\definecolor{swampskyhi}{HTML}{E9E3A0}
+\definecolor{swampsky}{HTML}{D9D184}
+\definecolor{swampskylow}{HTML}{C9C478}
+\definecolor{swampcloud}{HTML}{EEE9B4}
+\definecolor{swampwater}{HTML}{4F8A7F}
+\definecolor{swampwaterlight}{HTML}{7AAE9C}
+\definecolor{swampwaterdark}{HTML}{3F7268}
+\definecolor{log}{HTML}{9A6A48}
+\definecolor{logend}{HTML}{D9A66F}
+\definecolor{dunehi}{HTML}{F7DFA0}
+\definecolor{dunesky}{HTML}{F2C47A}
+\definecolor{duneskylow}{HTML}{EBA865}
+\definecolor{sand}{HTML}{EBC27C}
+\definecolor{sandlight}{HTML}{F4D69C}
+\definecolor{sanddark}{HTML}{D9A35E}
+\definecolor{sanddeep}{HTML}{C98C4E}
+\definecolor{sun}{HTML}{FFE6A3}
+\definecolor{cactus}{HTML}{6FA77A}
+\definecolor{cactusdark}{HTML}{4F8A60}
+\definecolor{palmtrunk}{HTML}{B98A5A}
+\definecolor{rock}{HTML}{C98C6A}
+\definecolor{awning}{HTML}{4FA3A0}
+\definecolor{carA}{HTML}{4FA3A0}
+\definecolor{carB}{HTML}{F2B53A}
+\definecolor{carC}{HTML}{E47A7E}
+\definecolor{carD}{HTML}{8DBB7E}
+\definecolor{glass}{HTML}{BFE3E0}
+\definecolor{duskhi}{HTML}{6B4A6E}
+\definecolor{dusk}{HTML}{B9607A}
+\definecolor{dusklow}{HTML}{E9906A}
+\definecolor{duskcloud}{HTML}{8E6680}
+\definecolor{smoke}{HTML}{9C8494}
+\definecolor{smokedark}{HTML}{7E6878}
+\definecolor{basalt}{HTML}{4A3A4A}
+\definecolor{basaltdark}{HTML}{352838}
+\definecolor{basalttop}{HTML}{6E5868}
+\definecolor{rockface}{HTML}{5E4A5C}
+\definecolor{lava}{HTML}{FF6A1A}
+\definecolor{lavagold}{HTML}{FFB000}
+\definecolor{lavadark}{HTML}{C9481A}
+\definecolor{pool}{HTML}{5FB8B0}
+\definecolor{poollight}{HTML}{9FE0D6}
+\definecolor{crown}{HTML}{FFC23A}
+\definecolor{crowndark}{HTML}{E09A1A}
+\definecolor{jewel}{HTML}{E0483E}
+\definecolor{jewelb}{HTML}{4FA3A0}
+\definecolor{limeskin}{HTML}{7BC043}
+\definecolor{limebelly}{HTML}{F4E8B0}
+\definecolor{limemark}{HTML}{3C7DC4}
+\definecolor{limeeye}{HTML}{E23B2E}
+\definecolor{limefeet}{HTML}{F2913D}
+\definecolor{azureskin}{HTML}{2E6FD8}
+\definecolor{azurebelly}{HTML}{1F4FA0}
+\definecolor{azuremark}{HTML}{16163A}
+\definecolor{azureeye}{HTML}{16163A}
+\definecolor{azurefeet}{HTML}{1F4FA0}
+\definecolor{bumbleskin}{HTML}{232028}
+\definecolor{bumblebelly}{HTML}{2E2A33}
+\definecolor{bumblemark}{HTML}{F6CF2E}
+\definecolor{bumbleeye}{HTML}{16163A}
+\definecolor{bumblefeet}{HTML}{232028}
+\definecolor{tomatoskin}{HTML}{E2522F}
+\definecolor{tomatobelly}{HTML}{F6D9B8}
+\definecolor{tomatomark}{HTML}{B83A22}
+\definecolor{tomatoeye}{HTML}{3A2A1E}
+\definecolor{tomatofeet}{HTML}{C9442A}
+\definecolor{bufoskin}{HTML}{9A7A4E}
+\definecolor{bufobelly}{HTML}{E8D6A8}
+\definecolor{bufomark}{HTML}{6B5233}
+\definecolor{bufoeye}{HTML}{E8B83A}
+\definecolor{bufofeet}{HTML}{8A6C44}
+\definecolor{goldieskin}{HTML}{F59A1B}
+\definecolor{goldiebelly}{HTML}{F8C25A}
+\definecolor{goldiemark}{HTML}{D97C0E}
+\definecolor{goldieeye}{HTML}{2A1A10}
+\definecolor{goldiefeet}{HTML}{E8890F}
+\definecolor{chompskin}{HTML}{A7C957}
+\definecolor{chompbelly}{HTML}{F2E6B8}
+\definecolor{chompmark}{HTML}{6A4A2E}
+\definecolor{chompeye}{HTML}{C9A227}
+\definecolor{chompfeet}{HTML}{8DAF45}
+\definecolor{glassyskin}{HTML}{B9E3C6}
+\definecolor{glassybelly}{HTML}{E4F4EA}
+\definecolor{glassymark}{HTML}{F2E25C}
+\definecolor{glassyeye}{HTML}{E9E0C8}
+\definecolor{glassyfeet}{HTML}{9FD3B0}
+\newcommand{\Ink}{1.8pt}
+\tikzset{inked/.style={draw=ink, line width=\Ink, line join=round, line cap=round}}
+\begin{document}
+\begin{tikzpicture}
+\clip (0,0) rectangle (6,6);
+\filldraw[inked,fill=paper] (3,3) circle (2.88);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (5.042,3.097);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (4.86,4.064);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (3.673,4.916);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (2.301,5.301);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (1.071,4.317);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (1.005,2.922);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (1.134,1.699);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (2.447,0.959);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (3.608,0.921);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3,3) -- (4.645,1.943);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3.34,3.016) -- (3.31,3.177) -- (3.112,3.319) -- (2.884,3.383) -- (2.678,3.219) -- (2.667,2.987) -- (2.689,2.783) -- (2.908,2.66) -- (3.101,2.654) -- (3.274,2.824) -- (3.34,3.016);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (3.681,3.032) -- (3.62,3.355) -- (3.224,3.639) -- (2.767,3.767) -- (2.357,3.439) -- (2.335,2.974) -- (2.378,2.566) -- (2.816,2.32) -- (3.203,2.307) -- (3.548,2.648) -- (3.681,3.032);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (4.021,3.049) -- (3.93,3.532) -- (3.337,3.958) -- (2.651,4.15) -- (2.035,3.658) -- (2.002,2.961) -- (2.067,2.35) -- (2.724,1.98) -- (3.304,1.961) -- (3.823,2.472) -- (4.021,3.049);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (4.361,3.065) -- (4.24,3.709) -- (3.449,4.277) -- (2.534,4.534) -- (1.714,3.878) -- (1.67,2.948) -- (1.756,2.133) -- (2.631,1.639) -- (3.405,1.614) -- (4.097,2.296) -- (4.361,3.065);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (4.702,3.081) -- (4.55,3.887) -- (3.561,4.597) -- (2.418,4.917) -- (1.392,4.097) -- (1.337,2.935) -- (1.445,1.916) -- (2.539,1.299) -- (3.506,1.268) -- (4.371,2.12) -- (4.702,3.081);
+\draw[ink, line width=2.88pt, line cap=round, line join=round] (5.042,3.097) -- (4.86,4.064) -- (3.673,4.916) -- (2.301,5.301) -- (1.071,4.317) -- (1.005,2.922) -- (1.134,1.699) -- (2.447,0.959) -- (3.608,0.921) -- (4.645,1.943) -- (5.042,3.097);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (5.042,3.097);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (4.86,4.064);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (3.673,4.916);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (2.301,5.301);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (1.071,4.317);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (1.005,2.922);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (1.134,1.699);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (2.447,0.959);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (3.608,0.921);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3,3) -- (4.645,1.943);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3.34,3.016) -- (3.31,3.177) -- (3.112,3.319) -- (2.884,3.383) -- (2.678,3.219) -- (2.667,2.987) -- (2.689,2.783) -- (2.908,2.66) -- (3.101,2.654) -- (3.274,2.824) -- (3.34,3.016);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (3.681,3.032) -- (3.62,3.355) -- (3.224,3.639) -- (2.767,3.767) -- (2.357,3.439) -- (2.335,2.974) -- (2.378,2.566) -- (2.816,2.32) -- (3.203,2.307) -- (3.548,2.648) -- (3.681,3.032);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (4.021,3.049) -- (3.93,3.532) -- (3.337,3.958) -- (2.651,4.15) -- (2.035,3.658) -- (2.002,2.961) -- (2.067,2.35) -- (2.724,1.98) -- (3.304,1.961) -- (3.823,2.472) -- (4.021,3.049);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (4.361,3.065) -- (4.24,3.709) -- (3.449,4.277) -- (2.534,4.534) -- (1.714,3.878) -- (1.67,2.948) -- (1.756,2.133) -- (2.631,1.639) -- (3.405,1.614) -- (4.097,2.296) -- (4.361,3.065);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (4.702,3.081) -- (4.55,3.887) -- (3.561,4.597) -- (2.418,4.917) -- (1.392,4.097) -- (1.337,2.935) -- (1.445,1.916) -- (2.539,1.299) -- (3.506,1.268) -- (4.371,2.12) -- (4.702,3.081);
+\draw[cream, line width=1.08pt, line cap=round, line join=round] (5.042,3.097) -- (4.86,4.064) -- (3.673,4.916) -- (2.301,5.301) -- (1.071,4.317) -- (1.005,2.922) -- (1.134,1.699) -- (2.447,0.959) -- (3.608,0.921) -- (4.645,1.943) -- (5.042,3.097);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (2.86,2.902) -- (2.663,2.662);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (2.8,2.784) -- (2.574,2.461);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (2.81,2.658) -- (2.589,2.249);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (2.887,2.544) -- (2.703,2.056);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (3.692,2.902) -- (3.889,2.662);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (3.752,2.784) -- (3.978,2.461);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (3.742,2.658) -- (3.963,2.249);
+\draw[ink, line width=1.98pt, line cap=round, line join=round] (3.276,2.586) -- (3.665,2.544) -- (3.849,2.056);
+\filldraw[inked,fill=spider] (3.276,2.434) circle (0.278);
+\filldraw[inked,fill=spider] (3.276,2.712) circle (0.19);
+\fill[white] (3.2,2.738) circle (0.056);
+\fill[ink] (3.2,2.725) circle (0.025);
+\fill[white] (3.352,2.738) circle (0.056);
+\fill[ink] (3.352,2.725) circle (0.025);
+\end{tikzpicture}
+\end{document}

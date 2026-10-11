@@ -1,0 +1,257 @@
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage{xcolor}
+\usetikzlibrary{calc}
+% Palette: Sam_Comm_final.png by eye, each course's own, and data/frogs.json.
+\definecolor{ink}{HTML}{3B2340}
+\definecolor{sky}{HTML}{EFC46A}
+\definecolor{skyhi}{HTML}{F5DA92}
+\definecolor{skylow}{HTML}{E9B060}
+\definecolor{cloud}{HTML}{F2D58A}
+\definecolor{paper}{HTML}{FBEFD0}
+\definecolor{cream}{HTML}{FFF6E0}
+\definecolor{white}{HTML}{FFFFFF}
+\definecolor{wallA}{HTML}{E88A73}
+\definecolor{wallB}{HTML}{EE9F7E}
+\definecolor{wallC}{HTML}{E47A7E}
+\definecolor{wallD}{HTML}{F0B07E}
+\definecolor{wallE}{HTML}{D9765F}
+\definecolor{wallF}{HTML}{E99A8A}
+\definecolor{greenA}{HTML}{8DBB7E}
+\definecolor{greenB}{HTML}{6FA77A}
+\definecolor{greenC}{HTML}{A9C97F}
+\definecolor{greenD}{HTML}{5E9C6A}
+\definecolor{greenE}{HTML}{4A8060}
+\definecolor{meadow}{HTML}{B5CF86}
+\definecolor{meadowdark}{HTML}{9DBE74}
+\definecolor{window}{HTML}{F6E7A0}
+\definecolor{windark}{HTML}{8C5A64}
+\definecolor{metal}{HTML}{8D9A93}
+\definecolor{metaldark}{HTML}{5E6B66}
+\definecolor{wood}{HTML}{B9835A}
+\definecolor{wooddark}{HTML}{8C5A3C}
+\definecolor{woodlight}{HTML}{D9A66F}
+\definecolor{rope}{HTML}{E3C48A}
+\definecolor{stone}{HTML}{E7C9A0}
+\definecolor{stonedark}{HTML}{C9A47E}
+\definecolor{road}{HTML}{8E7A86}
+\definecolor{roadline}{HTML}{F6E7A0}
+\definecolor{kerb}{HTML}{D8B48C}
+\definecolor{red}{HTML}{E0483E}
+\definecolor{redlight}{HTML}{F27A6A}
+\definecolor{gold}{HTML}{FFB000}
+\definecolor{goldlight}{HTML}{FFD54F}
+\definecolor{bell}{HTML}{F2B53A}
+\definecolor{teal}{HTML}{4FA3A0}
+\definecolor{tealdark}{HTML}{3C8582}
+\definecolor{magenta}{HTML}{FF2E88}
+\definecolor{cyan}{HTML}{13CFE3}
+\definecolor{violet}{HTML}{8A5BD6}
+\definecolor{water}{HTML}{6FB3A8}
+\definecolor{waterlight}{HTML}{9FD3C6}
+\definecolor{waterdark}{HTML}{4F8E86}
+\definecolor{pad}{HTML}{7DB86A}
+\definecolor{paddark}{HTML}{5C9A52}
+\definecolor{padlight}{HTML}{A6D38A}
+\definecolor{reed}{HTML}{8DB26A}
+\definecolor{cattail}{HTML}{8A5A3C}
+\definecolor{moss}{HTML}{A8B88E}
+\definecolor{cypress}{HTML}{5E8A5A}
+\definecolor{cypressdark}{HTML}{4A7048}
+\definecolor{lotus}{HTML}{F48FB1}
+\definecolor{lotusdark}{HTML}{E06C98}
+\definecolor{lotuslight}{HTML}{FAD0DF}
+\definecolor{lotuscentre}{HTML}{FFD54F}
+\definecolor{lotusseed}{HTML}{E0A82E}
+\definecolor{flybody}{HTML}{2B2530}
+\definecolor{flyeye}{HTML}{E0242E}
+\definecolor{flywing}{HTML}{F4F8FA}
+\definecolor{mushred}{HTML}{E23B2E}
+\definecolor{mushspot}{HTML}{FFF5E0}
+\definecolor{stem}{HTML}{F2E2C2}
+\definecolor{blush}{HTML}{F48FB1}
+\definecolor{pupil}{HTML}{1A1220}
+\definecolor{spider}{HTML}{3B2340}
+\definecolor{swampskyhi}{HTML}{E9E3A0}
+\definecolor{swampsky}{HTML}{D9D184}
+\definecolor{swampskylow}{HTML}{C9C478}
+\definecolor{swampcloud}{HTML}{EEE9B4}
+\definecolor{swampwater}{HTML}{4F8A7F}
+\definecolor{swampwaterlight}{HTML}{7AAE9C}
+\definecolor{swampwaterdark}{HTML}{3F7268}
+\definecolor{log}{HTML}{9A6A48}
+\definecolor{logend}{HTML}{D9A66F}
+\definecolor{dunehi}{HTML}{F7DFA0}
+\definecolor{dunesky}{HTML}{F2C47A}
+\definecolor{duneskylow}{HTML}{EBA865}
+\definecolor{sand}{HTML}{EBC27C}
+\definecolor{sandlight}{HTML}{F4D69C}
+\definecolor{sanddark}{HTML}{D9A35E}
+\definecolor{sanddeep}{HTML}{C98C4E}
+\definecolor{sun}{HTML}{FFE6A3}
+\definecolor{cactus}{HTML}{6FA77A}
+\definecolor{cactusdark}{HTML}{4F8A60}
+\definecolor{palmtrunk}{HTML}{B98A5A}
+\definecolor{rock}{HTML}{C98C6A}
+\definecolor{awning}{HTML}{4FA3A0}
+\definecolor{carA}{HTML}{4FA3A0}
+\definecolor{carB}{HTML}{F2B53A}
+\definecolor{carC}{HTML}{E47A7E}
+\definecolor{carD}{HTML}{8DBB7E}
+\definecolor{glass}{HTML}{BFE3E0}
+\definecolor{duskhi}{HTML}{6B4A6E}
+\definecolor{dusk}{HTML}{B9607A}
+\definecolor{dusklow}{HTML}{E9906A}
+\definecolor{duskcloud}{HTML}{8E6680}
+\definecolor{smoke}{HTML}{9C8494}
+\definecolor{smokedark}{HTML}{7E6878}
+\definecolor{basalt}{HTML}{4A3A4A}
+\definecolor{basaltdark}{HTML}{352838}
+\definecolor{basalttop}{HTML}{6E5868}
+\definecolor{rockface}{HTML}{5E4A5C}
+\definecolor{lava}{HTML}{FF6A1A}
+\definecolor{lavagold}{HTML}{FFB000}
+\definecolor{lavadark}{HTML}{C9481A}
+\definecolor{pool}{HTML}{5FB8B0}
+\definecolor{poollight}{HTML}{9FE0D6}
+\definecolor{crown}{HTML}{FFC23A}
+\definecolor{crowndark}{HTML}{E09A1A}
+\definecolor{jewel}{HTML}{E0483E}
+\definecolor{jewelb}{HTML}{4FA3A0}
+\definecolor{limeskin}{HTML}{7BC043}
+\definecolor{limebelly}{HTML}{F4E8B0}
+\definecolor{limemark}{HTML}{3C7DC4}
+\definecolor{limeeye}{HTML}{E23B2E}
+\definecolor{limefeet}{HTML}{F2913D}
+\definecolor{azureskin}{HTML}{2E6FD8}
+\definecolor{azurebelly}{HTML}{1F4FA0}
+\definecolor{azuremark}{HTML}{16163A}
+\definecolor{azureeye}{HTML}{16163A}
+\definecolor{azurefeet}{HTML}{1F4FA0}
+\definecolor{bumbleskin}{HTML}{232028}
+\definecolor{bumblebelly}{HTML}{2E2A33}
+\definecolor{bumblemark}{HTML}{F6CF2E}
+\definecolor{bumbleeye}{HTML}{16163A}
+\definecolor{bumblefeet}{HTML}{232028}
+\definecolor{tomatoskin}{HTML}{E2522F}
+\definecolor{tomatobelly}{HTML}{F6D9B8}
+\definecolor{tomatomark}{HTML}{B83A22}
+\definecolor{tomatoeye}{HTML}{3A2A1E}
+\definecolor{tomatofeet}{HTML}{C9442A}
+\definecolor{bufoskin}{HTML}{9A7A4E}
+\definecolor{bufobelly}{HTML}{E8D6A8}
+\definecolor{bufomark}{HTML}{6B5233}
+\definecolor{bufoeye}{HTML}{E8B83A}
+\definecolor{bufofeet}{HTML}{8A6C44}
+\definecolor{goldieskin}{HTML}{F59A1B}
+\definecolor{goldiebelly}{HTML}{F8C25A}
+\definecolor{goldiemark}{HTML}{D97C0E}
+\definecolor{goldieeye}{HTML}{2A1A10}
+\definecolor{goldiefeet}{HTML}{E8890F}
+\definecolor{chompskin}{HTML}{A7C957}
+\definecolor{chompbelly}{HTML}{F2E6B8}
+\definecolor{chompmark}{HTML}{6A4A2E}
+\definecolor{chompeye}{HTML}{C9A227}
+\definecolor{chompfeet}{HTML}{8DAF45}
+\definecolor{glassyskin}{HTML}{B9E3C6}
+\definecolor{glassybelly}{HTML}{E4F4EA}
+\definecolor{glassymark}{HTML}{F2E25C}
+\definecolor{glassyeye}{HTML}{E9E0C8}
+\definecolor{glassyfeet}{HTML}{9FD3B0}
+\newcommand{\Ink}{1.7pt}
+\tikzset{inked/.style={draw=ink, line width=\Ink, line join=round, line cap=round}}
+\begin{document}
+\begin{tikzpicture}
+\clip (0,0) rectangle (6,6);
+\filldraw[inked,fill=paper] (3,3) circle (2.88);
+\fill[water, opacity=0.35] (3.0,1.15) ellipse (2.55 and 0.75);
+\filldraw[inked,fill=pad] (3,1.2) -- ($(3,1.2)+(301:2.35 and 0.62)$) arc[start angle=301, end angle=629, x radius=2.35, y radius=0.62] -- cycle;
+\draw[paddark, line width=0.7pt] (3,1.2) -- (4.587,0.958);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (4.771,1.325);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (3.916,1.619);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (2.526,1.667);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (1.413,1.442);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (1.229,1.075);
+\draw[paddark, line width=0.7pt] (3,1.2) -- (2.084,0.781);
+\fill[padlight, opacity=0.6] (2.178,1.417) ellipse (0.517 and 0.099);
+\fill[ink, opacity=0.18] (3.0,1.08) ellipse (1.9 and 0.28);
+\begin{scope}[shift={(3,1.15)}, rotate=0, xscale=1.05, yscale=1.05]
+\filldraw[inked,fill=goldiefeet] (-1.861,0.05) .. controls (-1.88,-0.219) .. (-2.093,-0.386) .. controls (-2.074,-0.116) .. (-1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-2.093,-0.386) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (-1.861,0.05) .. controls (-1.996,-0.184) .. (-2.26,-0.24) .. controls (-2.125,-0.006) .. (-1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-2.26,-0.24) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (-1.861,0.05) .. controls (-2.085,-0.101) .. (-2.347,-0.036) .. controls (-2.123,0.115) .. (-1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-2.347,-0.036) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (-1.861,0.05) .. controls (-2.129,0.012) .. (-2.335,0.186) .. controls (-2.068,0.224) .. (-1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-2.335,0.186) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (-1.861,0.05) circle (0.22);
+\filldraw[inked,fill=goldiefeet] (1.861,0.05) .. controls (2.074,-0.116) .. (2.093,-0.386) .. controls (1.88,-0.219) .. (1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (2.093,-0.386) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (1.861,0.05) .. controls (2.125,-0.006) .. (2.26,-0.24) .. controls (1.996,-0.184) .. (1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (2.26,-0.24) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (1.861,0.05) .. controls (2.123,0.115) .. (2.347,-0.036) .. controls (2.085,-0.101) .. (1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (2.347,-0.036) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (1.861,0.05) .. controls (2.068,0.224) .. (2.335,0.186) .. controls (2.129,0.012) .. (1.861,0.05) -- cycle;
+\filldraw[inked,fill=goldiefeet] (2.335,0.186) circle (0.099);
+\filldraw[inked,fill=goldiefeet] (1.861,0.05) circle (0.22);
+\fill[goldieskin] plot[smooth cycle, tension=0.7] coordinates {(0,0) (1.363,0.1) (1.861,0.8) (1.767,1.95) (1.316,2.85) (0,3.18) (-1.316,2.85) (-1.767,1.95) (-1.861,0.8) (-1.363,0.1)};
+\begin{scope}\clip plot[smooth cycle, tension=0.7] coordinates {(0,0) (1.363,0.1) (1.861,0.8) (1.767,1.95) (1.316,2.85) (0,3.18) (-1.316,2.85) (-1.767,1.95) (-1.861,0.8) (-1.363,0.1)};
+\fill[goldiemark, opacity=0.5] (0,-0.15) ellipse (2.256 and 1.178);
+\fill[goldiemark, opacity=0.35] (0,3.1) ellipse (0.5 and 0.18);
+\end{scope}
+\draw[inked] plot[smooth cycle, tension=0.7] coordinates {(0,0) (1.363,0.1) (1.861,0.8) (1.767,1.95) (1.316,2.85) (0,3.18) (-1.316,2.85) (-1.767,1.95) (-1.861,0.8) (-1.363,0.1)};
+\fill[goldiebelly] plot[smooth cycle, tension=0.7] coordinates {(0.05,0.12) (0.943,0.22) (1.131,0.9) (0.896,1.6) (0.05,1.8) (-0.796,1.6) (-1.031,0.9) (-0.843,0.22)};
+\draw[inked] plot[smooth cycle, tension=0.7] coordinates {(0.05,0.12) (0.943,0.22) (1.131,0.9) (0.896,1.6) (0.05,1.8) (-0.796,1.6) (-1.031,0.9) (-0.843,0.22)};
+\fill[goldieskin] [rotate around={18:(-1.41,0.66)}] (-1.41,0.66) ellipse (0.752 and 0.58);
+\begin{scope}\clip [rotate around={18:(-1.41,0.66)}] (-1.41,0.66) ellipse (0.752 and 0.58);
+\fill[goldiemark, opacity=0.5] (-1.41,-0.14) ellipse (0.902 and 0.418);
+\end{scope}
+\draw[inked] [rotate around={18:(-1.41,0.66)}] (-1.41,0.66) ellipse (0.752 and 0.58);
+\fill[goldieskin] [rotate around={-18:(1.41,0.66)}] (1.41,0.66) ellipse (0.752 and 0.58);
+\begin{scope}\clip [rotate around={-18:(1.41,0.66)}] (1.41,0.66) ellipse (0.752 and 0.58);
+\fill[goldiemark, opacity=0.5] (1.41,-0.14) ellipse (0.902 and 0.418);
+\end{scope}
+\draw[inked] [rotate around={-18:(1.41,0.66)}] (1.41,0.66) ellipse (0.752 and 0.58);
+\filldraw[inked,fill=goldieskin] plot[smooth cycle, tension=0.5] coordinates {(-0.605,1.703) (-0.808,0.937) (-0.415,0.292) (-0.701,0.108) (-1.211,0.863) (-1.075,1.797)};
+\filldraw[inked,fill=goldiefeet] (-0.558,0.2) .. controls (-0.376,0.152) .. (-0.296,-0.02) .. controls (-0.479,0.029) .. (-0.558,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-0.296,-0.02) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (-0.558,0.2) .. controls (-0.429,0.062) .. (-0.452,-0.125) .. controls (-0.581,0.013) .. (-0.558,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-0.452,-0.125) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (-0.558,0.2) .. controls (-0.522,0.015) .. (-0.641,-0.131) .. controls (-0.677,0.054) .. (-0.558,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-0.641,-0.131) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (-0.558,0.2) .. controls (-0.625,0.024) .. (-0.804,-0.037) .. controls (-0.736,0.139) .. (-0.558,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (-0.804,-0.037) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (-0.558,0.2) circle (0.17);
+\filldraw[inked,fill=goldieskin] plot[smooth cycle, tension=0.5] coordinates {(1.275,1.797) (1.411,0.863) (0.901,0.108) (0.615,0.292) (1.008,0.937) (0.805,1.703)};
+\filldraw[inked,fill=goldiefeet] (0.758,0.2) .. controls (0.679,0.029) .. (0.496,-0.02) .. controls (0.576,0.152) .. (0.758,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (0.496,-0.02) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (0.758,0.2) .. controls (0.781,0.013) .. (0.652,-0.125) .. controls (0.629,0.062) .. (0.758,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (0.652,-0.125) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (0.758,0.2) .. controls (0.877,0.054) .. (0.841,-0.131) .. controls (0.722,0.015) .. (0.758,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (0.841,-0.131) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (0.758,0.2) .. controls (0.936,0.139) .. (1.004,-0.037) .. controls (0.825,0.024) .. (0.758,0.2) -- cycle;
+\filldraw[inked,fill=goldiefeet] (1.004,-0.037) circle (0.081);
+\filldraw[inked,fill=goldiefeet] (0.758,0.2) circle (0.17);
+\fill[ink] (-0.1,2.72) circle (0.05);
+\fill[blush, opacity=0.6] (-1.122,2.12) ellipse (0.26 and 0.14);
+\fill[ink] (0.3,2.72) circle (0.05);
+\fill[blush, opacity=0.6] (1.322,2.12) ellipse (0.26 and 0.14);
+\draw[ink, line width=2.125pt, line cap=round] (-0.84,2.38) .. controls (-0.37,1.8) and (0.57,1.8) .. (1.04,2.38);
+\draw[ink, line width=1.7pt, line cap=round] (-0.76,2.3) -- (-0.92,2.44);
+\draw[ink, line width=1.7pt, line cap=round] (0.96,2.3) -- (1.12,2.44);
+\filldraw[inked,fill=goldieskin] (-0.812,3.28) circle (0.74);
+\filldraw[inked,fill=goldieeye] (-0.812,3.31) circle (0.57);
+\draw[white, opacity=0.22, line width=2.72pt] (-0.812,3.31) circle (0.445);
+\fill[pupil] (-0.712,3.27) circle (0.285);
+\fill[white, opacity=0.9] (-1.011,3.527) circle (0.148);
+\fill[white, opacity=0.9] (-0.629,3.105) circle (0.063);
+\draw[inked] (-0.812,3.31) circle (0.57);
+\filldraw[inked,fill=goldieskin] (1.012,3.28) circle (0.696);
+\filldraw[inked,fill=goldieeye] (1.012,3.31) circle (0.536);
+\draw[white, opacity=0.22, line width=2.72pt] (1.012,3.31) circle (0.418);
+\fill[pupil] (0.992,3.27) circle (0.268);
+\fill[white, opacity=0.9] (0.824,3.514) circle (0.139);
+\fill[white, opacity=0.9] (1.183,3.117) circle (0.059);
+\draw[inked] (1.012,3.31) circle (0.536);
+\end{scope}
+\end{tikzpicture}
+\end{document}

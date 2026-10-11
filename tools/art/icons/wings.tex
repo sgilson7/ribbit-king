@@ -1,0 +1,193 @@
+\documentclass[tikz,border=0pt]{standalone}
+\usepackage{xcolor}
+\usetikzlibrary{calc}
+% Palette: Sam_Comm_final.png by eye, each course's own, and data/frogs.json.
+\definecolor{ink}{HTML}{3B2340}
+\definecolor{sky}{HTML}{EFC46A}
+\definecolor{skyhi}{HTML}{F5DA92}
+\definecolor{skylow}{HTML}{E9B060}
+\definecolor{cloud}{HTML}{F2D58A}
+\definecolor{paper}{HTML}{FBEFD0}
+\definecolor{cream}{HTML}{FFF6E0}
+\definecolor{white}{HTML}{FFFFFF}
+\definecolor{wallA}{HTML}{E88A73}
+\definecolor{wallB}{HTML}{EE9F7E}
+\definecolor{wallC}{HTML}{E47A7E}
+\definecolor{wallD}{HTML}{F0B07E}
+\definecolor{wallE}{HTML}{D9765F}
+\definecolor{wallF}{HTML}{E99A8A}
+\definecolor{greenA}{HTML}{8DBB7E}
+\definecolor{greenB}{HTML}{6FA77A}
+\definecolor{greenC}{HTML}{A9C97F}
+\definecolor{greenD}{HTML}{5E9C6A}
+\definecolor{greenE}{HTML}{4A8060}
+\definecolor{meadow}{HTML}{B5CF86}
+\definecolor{meadowdark}{HTML}{9DBE74}
+\definecolor{window}{HTML}{F6E7A0}
+\definecolor{windark}{HTML}{8C5A64}
+\definecolor{metal}{HTML}{8D9A93}
+\definecolor{metaldark}{HTML}{5E6B66}
+\definecolor{wood}{HTML}{B9835A}
+\definecolor{wooddark}{HTML}{8C5A3C}
+\definecolor{woodlight}{HTML}{D9A66F}
+\definecolor{rope}{HTML}{E3C48A}
+\definecolor{stone}{HTML}{E7C9A0}
+\definecolor{stonedark}{HTML}{C9A47E}
+\definecolor{road}{HTML}{8E7A86}
+\definecolor{roadline}{HTML}{F6E7A0}
+\definecolor{kerb}{HTML}{D8B48C}
+\definecolor{red}{HTML}{E0483E}
+\definecolor{redlight}{HTML}{F27A6A}
+\definecolor{gold}{HTML}{FFB000}
+\definecolor{goldlight}{HTML}{FFD54F}
+\definecolor{bell}{HTML}{F2B53A}
+\definecolor{teal}{HTML}{4FA3A0}
+\definecolor{tealdark}{HTML}{3C8582}
+\definecolor{magenta}{HTML}{FF2E88}
+\definecolor{cyan}{HTML}{13CFE3}
+\definecolor{violet}{HTML}{8A5BD6}
+\definecolor{water}{HTML}{6FB3A8}
+\definecolor{waterlight}{HTML}{9FD3C6}
+\definecolor{waterdark}{HTML}{4F8E86}
+\definecolor{pad}{HTML}{7DB86A}
+\definecolor{paddark}{HTML}{5C9A52}
+\definecolor{padlight}{HTML}{A6D38A}
+\definecolor{reed}{HTML}{8DB26A}
+\definecolor{cattail}{HTML}{8A5A3C}
+\definecolor{moss}{HTML}{A8B88E}
+\definecolor{cypress}{HTML}{5E8A5A}
+\definecolor{cypressdark}{HTML}{4A7048}
+\definecolor{lotus}{HTML}{F48FB1}
+\definecolor{lotusdark}{HTML}{E06C98}
+\definecolor{lotuslight}{HTML}{FAD0DF}
+\definecolor{lotuscentre}{HTML}{FFD54F}
+\definecolor{lotusseed}{HTML}{E0A82E}
+\definecolor{flybody}{HTML}{2B2530}
+\definecolor{flyeye}{HTML}{E0242E}
+\definecolor{flywing}{HTML}{F4F8FA}
+\definecolor{mushred}{HTML}{E23B2E}
+\definecolor{mushspot}{HTML}{FFF5E0}
+\definecolor{stem}{HTML}{F2E2C2}
+\definecolor{blush}{HTML}{F48FB1}
+\definecolor{pupil}{HTML}{1A1220}
+\definecolor{spider}{HTML}{3B2340}
+\definecolor{swampskyhi}{HTML}{E9E3A0}
+\definecolor{swampsky}{HTML}{D9D184}
+\definecolor{swampskylow}{HTML}{C9C478}
+\definecolor{swampcloud}{HTML}{EEE9B4}
+\definecolor{swampwater}{HTML}{4F8A7F}
+\definecolor{swampwaterlight}{HTML}{7AAE9C}
+\definecolor{swampwaterdark}{HTML}{3F7268}
+\definecolor{log}{HTML}{9A6A48}
+\definecolor{logend}{HTML}{D9A66F}
+\definecolor{dunehi}{HTML}{F7DFA0}
+\definecolor{dunesky}{HTML}{F2C47A}
+\definecolor{duneskylow}{HTML}{EBA865}
+\definecolor{sand}{HTML}{EBC27C}
+\definecolor{sandlight}{HTML}{F4D69C}
+\definecolor{sanddark}{HTML}{D9A35E}
+\definecolor{sanddeep}{HTML}{C98C4E}
+\definecolor{sun}{HTML}{FFE6A3}
+\definecolor{cactus}{HTML}{6FA77A}
+\definecolor{cactusdark}{HTML}{4F8A60}
+\definecolor{palmtrunk}{HTML}{B98A5A}
+\definecolor{rock}{HTML}{C98C6A}
+\definecolor{awning}{HTML}{4FA3A0}
+\definecolor{carA}{HTML}{4FA3A0}
+\definecolor{carB}{HTML}{F2B53A}
+\definecolor{carC}{HTML}{E47A7E}
+\definecolor{carD}{HTML}{8DBB7E}
+\definecolor{glass}{HTML}{BFE3E0}
+\definecolor{duskhi}{HTML}{6B4A6E}
+\definecolor{dusk}{HTML}{B9607A}
+\definecolor{dusklow}{HTML}{E9906A}
+\definecolor{duskcloud}{HTML}{8E6680}
+\definecolor{smoke}{HTML}{9C8494}
+\definecolor{smokedark}{HTML}{7E6878}
+\definecolor{basalt}{HTML}{4A3A4A}
+\definecolor{basaltdark}{HTML}{352838}
+\definecolor{basalttop}{HTML}{6E5868}
+\definecolor{rockface}{HTML}{5E4A5C}
+\definecolor{lava}{HTML}{FF6A1A}
+\definecolor{lavagold}{HTML}{FFB000}
+\definecolor{lavadark}{HTML}{C9481A}
+\definecolor{pool}{HTML}{5FB8B0}
+\definecolor{poollight}{HTML}{9FE0D6}
+\definecolor{crown}{HTML}{FFC23A}
+\definecolor{crowndark}{HTML}{E09A1A}
+\definecolor{jewel}{HTML}{E0483E}
+\definecolor{jewelb}{HTML}{4FA3A0}
+\definecolor{limeskin}{HTML}{7BC043}
+\definecolor{limebelly}{HTML}{F4E8B0}
+\definecolor{limemark}{HTML}{3C7DC4}
+\definecolor{limeeye}{HTML}{E23B2E}
+\definecolor{limefeet}{HTML}{F2913D}
+\definecolor{azureskin}{HTML}{2E6FD8}
+\definecolor{azurebelly}{HTML}{1F4FA0}
+\definecolor{azuremark}{HTML}{16163A}
+\definecolor{azureeye}{HTML}{16163A}
+\definecolor{azurefeet}{HTML}{1F4FA0}
+\definecolor{bumbleskin}{HTML}{232028}
+\definecolor{bumblebelly}{HTML}{2E2A33}
+\definecolor{bumblemark}{HTML}{F6CF2E}
+\definecolor{bumbleeye}{HTML}{16163A}
+\definecolor{bumblefeet}{HTML}{232028}
+\definecolor{tomatoskin}{HTML}{E2522F}
+\definecolor{tomatobelly}{HTML}{F6D9B8}
+\definecolor{tomatomark}{HTML}{B83A22}
+\definecolor{tomatoeye}{HTML}{3A2A1E}
+\definecolor{tomatofeet}{HTML}{C9442A}
+\definecolor{bufoskin}{HTML}{9A7A4E}
+\definecolor{bufobelly}{HTML}{E8D6A8}
+\definecolor{bufomark}{HTML}{6B5233}
+\definecolor{bufoeye}{HTML}{E8B83A}
+\definecolor{bufofeet}{HTML}{8A6C44}
+\definecolor{goldieskin}{HTML}{F59A1B}
+\definecolor{goldiebelly}{HTML}{F8C25A}
+\definecolor{goldiemark}{HTML}{D97C0E}
+\definecolor{goldieeye}{HTML}{2A1A10}
+\definecolor{goldiefeet}{HTML}{E8890F}
+\definecolor{chompskin}{HTML}{A7C957}
+\definecolor{chompbelly}{HTML}{F2E6B8}
+\definecolor{chompmark}{HTML}{6A4A2E}
+\definecolor{chompeye}{HTML}{C9A227}
+\definecolor{chompfeet}{HTML}{8DAF45}
+\definecolor{glassyskin}{HTML}{B9E3C6}
+\definecolor{glassybelly}{HTML}{E4F4EA}
+\definecolor{glassymark}{HTML}{F2E25C}
+\definecolor{glassyeye}{HTML}{E9E0C8}
+\definecolor{glassyfeet}{HTML}{9FD3B0}
+\newcommand{\Ink}{1.8pt}
+\tikzset{inked/.style={draw=ink, line width=\Ink, line join=round, line cap=round}}
+\begin{document}
+\begin{tikzpicture}
+\clip (0,0) rectangle (6,6);
+\filldraw[inked,fill=paper] (3,3) circle (2.88);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(2.489,2.703) (2.066,2.197) (1.829,1.799) (1.461,1.737) (1.381,2.101) (1.684,2.503) (2.161,2.997)};
+\draw[metal, line width=0.9pt, line cap=round] (1.875,2.35) -- (1.713,2.01);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(2.173,3.064) (1.566,2.65) (1.238,2.343) (0.868,2.386) (0.892,2.757) (1.284,3.05) (1.937,3.436)};
+\draw[metal, line width=0.9pt, line cap=round] (1.425,2.85) -- (1.173,2.61);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(1.802,3.439) (1.153,3.221) (0.836,3.014) (0.481,3.125) (0.574,3.486) (0.977,3.679) (1.678,3.861)};
+\draw[metal, line width=0.9pt, line cap=round] (1.065,3.45) -- (0.813,3.31);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(1.425,3.83) (0.901,3.806) (0.719,3.736) (0.41,3.944) (0.601,4.264) (0.869,4.294) (1.425,4.27)};
+\draw[metal, line width=0.9pt, line cap=round] (0.885,4.05) -- (0.768,4.06);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.6] coordinates {(2.595,2.6) (2.19,3.4) (1.47,4.25) (0.75,4.75) (0.525,4.6) (1.11,4.05) (1.74,3.35) (2.235,2.6)};
+\draw[metal, line width=0.9pt] (2.095,3.05) arc[start angle=200, end angle=340, radius=0.15];
+\draw[metal, line width=0.9pt] (1.69,3.47) arc[start angle=200, end angle=340, radius=0.15];
+\draw[metal, line width=0.9pt] (1.285,3.89) arc[start angle=200, end angle=340, radius=0.15];
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(3.839,2.997) (4.316,2.503) (4.619,2.101) (4.539,1.737) (4.171,1.799) (3.934,2.197) (3.511,2.703)};
+\draw[metal, line width=0.9pt, line cap=round] (4.125,2.35) -- (4.287,2.01);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(4.063,3.436) (4.716,3.05) (5.108,2.757) (5.132,2.386) (4.762,2.343) (4.434,2.65) (3.827,3.064)};
+\draw[metal, line width=0.9pt, line cap=round] (4.575,2.85) -- (4.827,2.61);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(4.322,3.861) (5.023,3.679) (5.426,3.486) (5.519,3.125) (5.164,3.014) (4.847,3.221) (4.198,3.439)};
+\draw[metal, line width=0.9pt, line cap=round] (4.935,3.45) -- (5.187,3.31);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.5] coordinates {(4.575,4.27) (5.131,4.294) (5.399,4.264) (5.59,3.944) (5.281,3.736) (5.099,3.806) (4.575,3.83)};
+\draw[metal, line width=0.9pt, line cap=round] (5.115,4.05) -- (5.232,4.06);
+\filldraw[inked,fill=white] plot[smooth cycle, tension=0.6] coordinates {(3.405,2.6) (3.81,3.4) (4.53,4.25) (5.25,4.75) (5.475,4.6) (4.89,4.05) (4.26,3.35) (3.765,2.6)};
+\draw[metal, line width=0.9pt] (3.625,3.05) arc[start angle=200, end angle=340, radius=0.15];
+\draw[metal, line width=0.9pt] (4.03,3.47) arc[start angle=200, end angle=340, radius=0.15];
+\draw[metal, line width=0.9pt] (4.435,3.89) arc[start angle=200, end angle=340, radius=0.15];
+\filldraw[inked,fill=red] (3,2.75) circle (0.55);
+\fill[white, opacity=0.9] (2.8,2.95) circle (0.15);
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,13 @@
+{
+  "_about": "The frogs a player can pick. Each is drawn in 3D by crates/core/src/frog.rs from these colours and its pattern, and as a portrait by tools/art.py from the same colours. pattern is one of plain, spots, bands, warts, blotches, dots, flanks. eye is the iris colour; every frog has large eyes with a black pupil. belly is the underside and the throat.",
+  "frogs": [
+    { "id": "lime", "name": "Lime", "kind": "Red-eyed tree frog", "skin": "#7BC043", "belly": "#F4E8B0", "pattern": "flanks", "mark": "#3C7DC4", "eye": "#E23B2E", "feet": "#F2913D" },
+    { "id": "azure", "name": "Azure", "kind": "Blue poison dart frog", "skin": "#2E6FD8", "belly": "#1F4FA0", "pattern": "spots", "mark": "#16163A", "eye": "#16163A", "feet": "#1F4FA0" },
+    { "id": "bumble", "name": "Bumble", "kind": "Yellow-banded dart frog", "skin": "#232028", "belly": "#2E2A33", "pattern": "bands", "mark": "#F6CF2E", "eye": "#16163A", "feet": "#232028" },
+    { "id": "tomato", "name": "Tomato", "kind": "Tomato frog", "skin": "#E2522F", "belly": "#F6D9B8", "pattern": "plain", "mark": "#B83A22", "eye": "#3A2A1E", "feet": "#C9442A" },
+    { "id": "bufo", "name": "Bufo", "kind": "Cane toad", "skin": "#9A7A4E", "belly": "#E8D6A8", "pattern": "warts", "mark": "#6B5233", "eye": "#E8B83A", "feet": "#8A6C44" },
+    { "id": "goldie", "name": "Goldie", "kind": "Golden toad", "skin": "#F59A1B", "belly": "#F8C25A", "pattern": "plain", "mark": "#D97C0E", "eye": "#2A1A10", "feet": "#E8890F" },
+    { "id": "chomp", "name": "Chomp", "kind": "Horned frog", "skin": "#A7C957", "belly": "#F2E6B8", "pattern": "blotches", "mark": "#6A4A2E", "eye": "#C9A227", "feet": "#8DAF45" },
+    { "id": "glassy", "name": "Glassy", "kind": "Glass frog", "skin": "#B9E3C6", "belly": "#E4F4EA", "pattern": "dots", "mark": "#F2E25C", "eye": "#E9E0C8", "feet": "#9FD3B0" }
+  ]
+}
