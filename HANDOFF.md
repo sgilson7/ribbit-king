@@ -1,6 +1,31 @@
 # Handoff
 
-10 October 2026, round 2: online play for up to four browsers is built, deployed and listed. Round 1 (the MVP) follows below.
+11 October 2026, round 3: the playtest changes are built, deployed and listed.
+
+## Round 3: playtest changes
+
+All of the designer's and players' notes (BRIEF.md, round 3) are built:
+
+- five holes of par 5 or more (Toadstool Hollow is the new fungus course), each with three crossing routes, cliffs, mesas, tunnels, rivers and waterfalls;
+- swimming at no stroke, with a lily pad for the next shot;
+- webs set into the ground, 3–9 m, with the Deku-tree funnel;
+- blue bumper mushrooms, point bubbles and fly hops;
+- the bell's firework on a perfect hit, and a live leader's crown;
+- snails and whirlpools in the swamp, and antlions in the desert.
+
+The holes are generated: edit `tools/courses.py`, run it, and it rewrites `data/course.json`.
+
+| Check | Result |
+| --- | --- |
+| `./scripts/check.sh` | BUILDER CHECK PASSED. 73 core tests, 12 boundary tests; browser check and four-browser online check in Chromium, Firefox and WebKit |
+| CI (Linux, Chromium, online included) | success, 12 min 44 s, deployed |
+| Live, browser check | passed in three engines |
+| Live, four browsers by room code over the public relays | all three joiners in, standings equal, twice with GPU rendering. With software rendering it failed to connect some joiners (SECOND-ORDER S26) |
+| CPU probe, 4 seeds a hole | swamp 4–5, desert 4–5, fungus 4–5, city 4–6 (par 5); volcano 4–8 (par 6); slowest tick 3–15 ms |
+
+Website: the page now describes the five holes and the new features. `make check`, `make packet` and the gate pass, and it is deployed. The source is again not pushed: it is ahead of its remote by the other session's `a08d87e` and my two Ribbit King commits.
+
+## Round 2: online online play for up to four browsers is built, deployed and listed. Round 1 (the MVP) follows below.
 
 ## Round 2: online
 
