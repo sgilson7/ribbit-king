@@ -8,6 +8,7 @@ import { makeInput } from "./input.js";
 import { makeHud } from "./hud.js";
 import { makeScreens } from "./screens.js";
 import { setup as setupSound, wake, toggleMute, play } from "./sound.js";
+import { makeOnline } from "./online.js";
 
 const BUILD = "__BUILD__";
 const SAVE_KEY = "ribbit-king.record";
@@ -80,8 +81,86 @@ async function start() {
     save();
     showMode(JSON.parse(game.hud()).mode, true);
   };
+  const online = makeOnline(game, BUILD);
   el("play").addEventListener("click", act(() => game.begin()));
-  el("setup-back").addEventListener("click", act(() => game.quit()));
+  el("setup-back").addEventListener(
+    "click",
+    act(() => {
+      online.leave();
+      game.quit();
+    }),
+  );
+
+  // online: joining from the title, hosting from the setup screen
+  const showJoin = () => {
+    el("online").hidden = false;
+    el("join-error").textContent = "";
+  };
+  el("online-open").addEventListener("click", () => {
+    wake();
+    showJoin();
+  });
+  el("online-back").addEventListener("click", () => {
+    el("online").hidden = true;
+    online.leave();
+  });
+  const joinRoom = () => {
+    wake();
+    if (!online.join(el("room-code").value)) {
+      el("join-error").textContent = copy.online_bad_room;
+      return;
+    }
+    el("online").hidden = true;
+    showMode(JSON.parse(game.hud()).mode, true);
+  };
+  el("join-room").addEventListener("click", joinRoom);
+  el("room-code").addEventListener("keydown", (e) => {
+    if (e.code === "Enter") joinRoom();
+  });
+  el("make-reply").addEventListener("click", () => {
+    wake();
+    online
+      .joinByCode(el("invite-in").value)
+      .then((reply) => {
+        el("reply-out").value = reply;
+        el("reply-box").hidden = false;
+        document.body.dataset.reply = "ready";
+      })
+      .catch(() => {
+        el("join-error").textContent = copy.online_bad_code;
+      });
+  });
+  // after the reply is sent, the lobby appears once the host lets us in
+  el("host-room").addEventListener("click", act(() => online.host("room")));
+  el("host-code").addEventListener(
+    "click",
+    act(() => {
+      online.host("code");
+      el("invite-box").open = true;
+    }),
+  );
+  el("new-invite").addEventListener("click", () => {
+    el("invite-out").value = "";
+    online.invitation().then((code) => {
+      el("invite-out").value = code;
+      document.body.dataset.invite = "ready";
+    });
+  });
+  el("accept-reply").addEventListener("click", () => {
+    online
+      .accept(el("reply-in").value)
+      .then(() => {
+        el("reply-in").value = "";
+      })
+      .catch(() => {
+        el("host-status").textContent = copy.online_bad_code;
+      });
+  });
+  const hashRoom = location.hash.match(/^#room=(\w+)$/);
+  if (hashRoom) {
+    el("room-code").value = hashRoom[1];
+    showJoin();
+  }
   el("course-prev").addEventListener("click", act(() => game.cycle_course(false)));
   el("course-next").addEventListener("click", act(() => game.cycle_course(true)));
   el("start").addEventListener(
@@ -101,7 +180,15 @@ async function start() {
     }),
   );
   el("card-quit").addEventListener("click", act(() => game.quit()));
-  el("resume").addEventListener("click", act(() => game.resume()));
+  // online the round never stops: the pause sheet is only drawn over it
+  const onlineNow = () => Boolean(JSON.parse(game.hud()).online);
+  el("resume").addEventListener(
+    "click",
+    act(() => {
+      game.resume();
+      el("paused").hidden = true;
+    }),
+  );
   el("quit").addEventListener("click", act(() => game.quit()));
   el("mute").addEventListener("click", () => toggleMute());
   for (const b of document.querySelectorAll(".open-help")) {
@@ -132,6 +219,7 @@ async function start() {
     const mode = document.body.dataset.mode;
     if (e.code === "Escape") {
       if (!el("help").hidden) el("help").hidden = true;
+      else if (mode === "play" && onlineNow()) el("paused").hidden = !el("paused").hidden;
       else if (mode === "play") game.pause();
       else if (mode === "paused") game.resume();
     }
@@ -164,15 +252,32 @@ async function start() {
     if (mode === "final") screens.card(s, true);
     if (mode !== "play") input.release();
     if (mode === "card" || mode === "final") save();
+    const notice = JSON.parse(game.hud()).notice;
+    el("notice").textContent = notice ? copy[notice] : "";
     shownMode = mode;
   }
 
   let sceneVersion = null;
+  let lobbyShown = "";
   function frame(now) {
     const { bits, dx, dy } = input.read();
     game.advance(now, bits, dx, dy);
+    online.pump();
     const h = JSON.parse(game.hud());
+    // the core left online play (the host ended it, or we were turned away)
+    if (!h.online && online.active()) online.close();
     showMode(h.mode, false);
+    // an online lobby changes with messages from other browsers: redraw it
+    // when, and only when, what it shows has changed
+    if (h.online && h.mode === "setup") {
+      const text = game.screen();
+      if (text !== lobbyShown) {
+        lobbyShown = text;
+        const s = JSON.parse(text);
+        screens.setup(s);
+        if (s.online && s.online.joined) el("online").hidden = true;
+      }
+    }
     if (h.mode === "play") hud.update(h);
     else for (const s of h.sounds || []) play(s);
     if (renderer) {

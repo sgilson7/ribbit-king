@@ -9,6 +9,7 @@ use crate::draw::{self, Particle, View};
 use crate::fx::{self, deg, int, ONE};
 use crate::geom::{facing, v3, V3};
 use crate::mesh::{self, Mesh};
+use crate::online::{self, Cmd, Msg, Online, Owner, Role, Seat, Step};
 use crate::render::{self, Batch, Camera};
 use crate::rng::Rng;
 use crate::round::{heading_to, Input, Note, Phase, Round};
@@ -67,6 +68,10 @@ pub enum Slot {
     Human,
     Cpu,
     Off,
+    /// hosting online: waiting for someone to join into this seat
+    Open,
+    /// hosting online: taken by the browser with this peer id
+    Remote(u32),
 }
 
 impl Slot {
@@ -75,9 +80,35 @@ impl Slot {
             Slot::Human => "human",
             Slot::Cpu => "cpu",
             Slot::Off => "off",
+            Slot::Open => "open",
+            Slot::Remote(_) => "remote",
         }
     }
+
+    /// Plays in a round when it starts.
+    fn plays(self) -> bool {
+        !matches!(self, Slot::Off | Slot::Open)
+    }
 }
+
+/// The keys a joiner's presses may carry: the four that happen once.
+const PRESS_ACTIONS: &[&str] = &["swing", "tongue", "loft", "cancel"];
+/// The keys a joiner's held keys may carry.
+const HOLD_ACTIONS: &[&str] = &["left", "right", "forward", "back"];
+/// What the online lobby may say, in copy.json's online words.
+const ONLINE_WORDS: &[&str] = &[
+    "online_hosting",
+    "online_joining",
+    "online_in_lobby",
+    "online_full",
+    "online_build",
+    "online_started",
+    "online_left",
+    "online_host_left",
+    "online_no_relay",
+    "online_no_path",
+    "online_bad_code",
+];
 
 pub const SLOTS: usize = 4;
 const SAYS_KEPT: usize = 4;
@@ -120,6 +151,11 @@ pub struct Game {
     best: BTreeMap<String, i32>,
     best_round: Option<i32>,
     rounds: i32,
+    online: Option<Online>,
+    /// goodbyes still to send after leaving online play
+    parting: Vec<(u32, String)>,
+    /// something to tell the person on the title screen (a key in copy.json)
+    notice: Option<&'static str>,
 }
 
 impl Game {
@@ -170,6 +206,9 @@ impl Game {
             best: BTreeMap::new(),
             best_round: None,
             rounds: 0,
+            online: None,
+            parting: Vec::new(),
+            notice: None,
         };
         g.load_saved(saved);
         g.build_scene();
@@ -200,20 +239,25 @@ impl Game {
 
     pub fn begin(&mut self) {
         if self.mode == Mode::Title {
+            self.notice = None;
             self.mode = Mode::Setup;
         }
     }
 
     /// Human, CPU, off, round again. The first slot is never off.
     pub fn cycle_slot(&mut self, i: usize) {
-        if self.mode != Mode::Setup || i >= SLOTS {
+        if self.mode != Mode::Setup || i >= SLOTS || self.role() == Some(Role::Joiner) {
             return;
         }
+        let hosting = self.role() == Some(Role::Host);
         let next = match self.slots[i].0 {
             Slot::Human => Slot::Cpu,
             Slot::Cpu if i == 0 => Slot::Human,
             Slot::Cpu => Slot::Off,
-            Slot::Off => Slot::Human,
+            Slot::Off if hosting => Slot::Open,
+            Slot::Off | Slot::Open => Slot::Human,
+            // a seat someone has joined into stays theirs
+            Slot::Remote(p) => Slot::Remote(p),
         };
         self.slots[i].0 = next;
         if next != Slot::Off {
@@ -223,6 +267,7 @@ impl Game {
                 self.slots[i].1 = self.free_frog(f, 1, i);
             }
         }
+        self.lobby_changed();
     }
 
     fn frog_taken(&self, f: usize, except: usize) -> bool {
@@ -246,37 +291,76 @@ impl Game {
 
     /// The next frog nobody else in the round has.
     pub fn cycle_frog(&mut self, i: usize, forward: bool) {
+        if let Some(o) = &mut self.online {
+            if o.role == Role::Joiner {
+                // a joiner may change only its own frog, and the host decides
+                if i == o.seat {
+                    o.to_host(&Msg::Pick { forward });
+                }
+                return;
+            }
+        }
         if self.mode != Mode::Setup || i >= SLOTS || self.slots[i].0 == Slot::Off {
             return;
         }
         self.slots[i].1 = self.free_frog(self.slots[i].1, if forward { 1 } else { -1 }, i);
+        self.lobby_changed();
     }
 
     pub fn cycle_course(&mut self, forward: bool) {
-        if self.mode != Mode::Setup {
+        if self.mode != Mode::Setup || self.role() == Some(Role::Joiner) {
             return;
         }
         let n = self.holes.len() as i32 + 1;
         self.choice = (self.choice as i32 + if forward { 1 } else { -1 }).rem_euclid(n) as usize;
+        self.lobby_changed();
     }
 
     pub fn start_round(&mut self) {
-        if self.mode != Mode::Setup {
+        if self.mode != Mode::Setup || self.role() == Some(Role::Joiner) {
             return;
         }
-        let players: Vec<(usize, bool)> = self
-            .slots
-            .iter()
-            .filter(|(k, _)| *k != Slot::Off)
-            .map(|(k, f)| (*f, *k == Slot::Cpu))
-            .collect();
+        let seated: Vec<(Slot, usize)> = self.slots.iter().copied().filter(|(k, _)| k.plays()).collect();
+        let players: Vec<(usize, bool)> = seated.iter().map(|(k, f)| (*f, *k == Slot::Cpu)).collect();
         self.plan = if self.choice == 0 {
             (0..self.holes.len()).collect()
         } else {
             vec![self.choice - 1]
         };
-        self.round = Some(Round::new(players, 2003 + self.rounds as u64));
+        let seed = 2003 + self.rounds as u64;
+        self.round = Some(Round::new(players.clone(), seed));
         self.at = 0;
+        if let Some(o) = &mut self.online {
+            o.owners = seated
+                .iter()
+                .map(|(k, _)| match k {
+                    Slot::Remote(p) => Owner::There(*p),
+                    Slot::Cpu => Owner::Cpu,
+                    _ => Owner::Here,
+                })
+                .collect();
+            o.tick = 0;
+            o.fresh.clear();
+            o.sums.clear();
+            o.cmds.clear();
+            o.desync = None;
+            let kinds: Vec<String> = seated.iter().map(|(k, _)| k.name().to_string()).collect();
+            let peers: Vec<u32> = o.peers.keys().copied().collect();
+            for p in peers {
+                let you = seated
+                    .iter()
+                    .position(|(k, _)| *k == Slot::Remote(p))
+                    .unwrap_or(0);
+                let m = Msg::Start {
+                    players: players.clone(),
+                    owners: kinds.clone(),
+                    plan: self.plan.clone(),
+                    seed,
+                    you,
+                };
+                o.send(p, &m);
+            }
+        }
         self.load_hole();
     }
 
@@ -294,7 +378,23 @@ impl Game {
         self.build_scene();
     }
 
+    /// The Tee off button. Online, the host's press is a command every copy
+    /// runs at the same tick; a joiner's does nothing.
     pub fn tee_off(&mut self) {
+        match self.role() {
+            Some(Role::Host) => self.command(Cmd::TeeOff),
+            Some(Role::Joiner) => {}
+            None => self.do_tee_off(),
+        }
+    }
+
+    fn command(&mut self, c: Cmd) {
+        if let Some(o) = &mut self.online {
+            o.cmds.push_back(c);
+        }
+    }
+
+    fn do_tee_off(&mut self) {
         if self.mode == Mode::Intro {
             self.mode = Mode::Play;
             let notes = self
@@ -307,6 +407,14 @@ impl Game {
     }
 
     pub fn next_hole(&mut self) {
+        match self.role() {
+            Some(Role::Host) => self.command(Cmd::NextHole),
+            Some(Role::Joiner) => {}
+            None => self.do_next_hole(),
+        }
+    }
+
+    fn do_next_hole(&mut self) {
         if self.mode != Mode::Card {
             return;
         }
@@ -322,19 +430,24 @@ impl Game {
         self.mode = Mode::Final;
         self.rounds += 1;
         if self.plan.len() == self.holes.len() {
-            if let Some(r) = &self.round {
-                for p in r.players.iter().filter(|p| !p.cpu) {
-                    let total: i32 = p.scores.iter().sum();
-                    if self.best_round.map(|b| total < b).unwrap_or(true) {
-                        self.best_round = Some(total);
-                    }
+            let totals: Vec<i32> = match &self.round {
+                Some(r) => (0..r.players.len())
+                    .filter(|i| self.is_local(*i))
+                    .map(|i| r.players[i].scores.iter().sum())
+                    .collect(),
+                None => Vec::new(),
+            };
+            for total in totals {
+                if self.best_round.map(|b| total < b).unwrap_or(true) {
+                    self.best_round = Some(total);
                 }
             }
         }
     }
 
     pub fn pause(&mut self) {
-        if self.mode == Mode::Play {
+        // online, the round goes on for everyone else
+        if self.mode == Mode::Play && self.online.is_none() {
             self.mode = Mode::Paused;
         }
     }
@@ -347,6 +460,7 @@ impl Game {
     }
 
     pub fn quit(&mut self) {
+        self.leave_online();
         self.mode = Mode::Title;
         self.round = None;
         self.course = Course::build(&self.holes[0], &self.pal);
@@ -355,9 +469,325 @@ impl Game {
     }
 
     pub fn again(&mut self) {
-        if self.mode == Mode::Final {
+        if self.mode == Mode::Final && self.role() != Some(Role::Joiner) {
             self.mode = Mode::Setup;
             self.round = None;
+            self.lobby_changed();
+        }
+    }
+
+    // ---- online ---------------------------------------------------------------
+
+    fn role(&self) -> Option<Role> {
+        self.online.as_ref().map(|o| o.role)
+    }
+
+    /// Is player `i` played at this keyboard?
+    fn is_local(&self, i: usize) -> bool {
+        match &self.online {
+            Some(o) => o.owners.get(i) == Some(&Owner::Here),
+            None => self.round.as_ref().map(|r| !r.players[i].cpu).unwrap_or(false),
+        }
+    }
+
+    /// Host a round online from the setup screen. Seats other than the first
+    /// that a person would play become open for someone to join into. The
+    /// seed (the page's clock) only picks the room code.
+    pub fn host_online(&mut self, build: &str, seed: u64) -> String {
+        if self.mode != Mode::Setup || self.online.is_some() {
+            return self.online.as_ref().map(|o| o.room.clone()).unwrap_or_default();
+        }
+        let room = online::room_code(seed);
+        self.online = Some(Online::new(Role::Host, &room, build));
+        for i in 1..SLOTS {
+            if self.slots[i].0 == Slot::Human {
+                self.slots[i].0 = Slot::Open;
+            }
+        }
+        self.notice = None;
+        room
+    }
+
+    /// Join a room by its code (or, with an empty code, by a pasted
+    /// invitation, which needs no room). False if the code cannot be one.
+    pub fn join_online(&mut self, build: &str, code: &str) -> bool {
+        let room = if code.is_empty() {
+            String::new()
+        } else {
+            match online::tidy_code(code) {
+                Some(c) => c,
+                None => return false,
+            }
+        };
+        self.leave_online();
+        self.round = None;
+        self.online = Some(Online::new(Role::Joiner, &room, build));
+        self.mode = Mode::Setup;
+        self.notice = None;
+        true
+    }
+
+    /// Leave online play: goodbye to everyone, and the seats back to people.
+    pub fn leave_online(&mut self) {
+        let Some(mut o) = self.online.take() else { return };
+        let why = if o.role == Role::Host {
+            "online_host_left"
+        } else {
+            "online_left"
+        };
+        let peers: Vec<u32> = match o.role {
+            Role::Host => o.peers.keys().copied().collect(),
+            Role::Joiner => o.host.into_iter().collect(),
+        };
+        for p in peers {
+            o.send(p, &Msg::Bye { why: why.into() });
+        }
+        // the goodbyes still go out
+        self.online = None;
+        self.parting = o.outbox;
+        for slot in self.slots.iter_mut() {
+            if matches!(slot.0, Slot::Open | Slot::Remote(_)) {
+                slot.0 = Slot::Off;
+            }
+        }
+    }
+
+    /// The room code, while hosting or joining by one.
+    pub fn room(&self) -> String {
+        self.online.as_ref().map(|o| o.room.clone()).unwrap_or_default()
+    }
+
+    /// The transport reached another browser.
+    pub fn net_peer(&mut self, peer: u32) {
+        let Some(o) = &mut self.online else { return };
+        if o.role == Role::Joiner && o.host.is_none() {
+            o.host = Some(peer);
+            let hello = Msg::Hello {
+                proto: online::PROTO,
+                build: o.build.clone(),
+            };
+            o.send(peer, &hello);
+        }
+    }
+
+    /// The transport lost a browser.
+    pub fn net_left(&mut self, peer: u32) {
+        let Some(o) = &mut self.online else { return };
+        match o.role {
+            Role::Joiner => {
+                if o.host == Some(peer) {
+                    self.online = None;
+                    self.notice = Some("online_host_left");
+                    self.round = None;
+                    self.mode = Mode::Title;
+                    self.course = Course::build(&self.holes[0], &self.pal);
+                    self.build_scene();
+                }
+            }
+            Role::Host => {
+                let Some(seat) = o.peers.remove(&peer) else { return };
+                o.holds.remove(&peer);
+                o.presses.remove(&peer);
+                if self.round.is_some() {
+                    // the CPU takes the seat, on every copy at the same tick
+                    if let Some(i) = o.owners.iter().position(|w| *w == Owner::There(peer)) {
+                        o.cmds.push_back(Cmd::Cpu(i));
+                        o.owners[i] = Owner::Cpu;
+                    }
+                    self.slots[seat].0 = Slot::Cpu;
+                } else {
+                    self.slots[seat].0 = Slot::Open;
+                    self.lobby_changed();
+                }
+            }
+        }
+    }
+
+    /// The transport could not do something; a key from copy.json's online words.
+    pub fn net_error(&mut self, key: &str) {
+        if let (Some(o), Some(k)) = (&mut self.online, ONLINE_WORDS.iter().find(|w| **w == key)) {
+            o.status = k;
+        }
+    }
+
+    /// What to send, as `[[peer, text], ...]`, emptied.
+    pub fn net_outbox(&mut self) -> String {
+        let mut out = std::mem::take(&mut self.parting);
+        if let Some(o) = &mut self.online {
+            out.append(&mut o.outbox);
+        }
+        serde_json::to_string(&out).unwrap_or_else(|_| "[]".into())
+    }
+
+    /// A message from another browser.
+    pub fn net_message(&mut self, peer: u32, text: &str) {
+        let Some(m) = online::decode(text) else { return };
+        match self.role() {
+            Some(Role::Host) => self.host_hears(peer, m),
+            Some(Role::Joiner) => self.joiner_hears(peer, m),
+            None => {}
+        }
+    }
+
+    fn host_hears(&mut self, peer: u32, m: Msg) {
+        let started = self.round.is_some();
+        let open = self.slots.iter().position(|(k, _)| *k == Slot::Open);
+        let Some(o) = &mut self.online else { return };
+        match m {
+            Msg::Hello { proto, build } => {
+                let refuse = if proto != online::PROTO || build != o.build {
+                    Some("online_build")
+                } else if started {
+                    Some("online_started")
+                } else if open.is_none() {
+                    Some("online_full")
+                } else {
+                    None
+                };
+                if let Some(why) = refuse {
+                    o.send(peer, &Msg::Bye { why: why.into() });
+                    return;
+                }
+                let seat = open.unwrap_or(0);
+                o.peers.insert(peer, seat);
+                self.slots[seat].0 = Slot::Remote(peer);
+                let f = self.slots[seat].1;
+                if self.frog_taken(f, seat) {
+                    self.slots[seat].1 = self.free_frog(f, 1, seat);
+                }
+                self.lobby_changed();
+            }
+            Msg::Pick { forward } => {
+                if let Some(&seat) = o.peers.get(&peer) {
+                    if self.mode == Mode::Setup {
+                        self.slots[seat].1 =
+                            self.free_frog(self.slots[seat].1, if forward { 1 } else { -1 }, seat);
+                        self.lobby_changed();
+                    }
+                }
+            }
+            Msg::Hold { b, y } => {
+                let held = HOLD_ACTIONS.iter().fold(0, |acc, n| acc | (b & bit(n)));
+                if o.peers.contains_key(&peer) {
+                    o.holds.insert(peer, (held, y));
+                }
+            }
+            Msg::Press { a, n } => {
+                if o.peers.contains_key(&peer) && PRESS_ACTIONS.iter().any(|w| bit(w) == a) {
+                    o.presses.entry(peer).or_default().push_back((a, n));
+                }
+            }
+            Msg::Sum { tick, sum } => {
+                if let Some(mine) = o.sums.get(&tick) {
+                    if *mine != sum && o.desync.is_none() {
+                        o.desync = Some(tick);
+                        let peers: Vec<u32> = o.peers.keys().copied().collect();
+                        for p in peers {
+                            o.send(p, &Msg::Desync { tick });
+                        }
+                    }
+                }
+            }
+            Msg::Bye { .. } => self.net_left(peer),
+            _ => {}
+        }
+    }
+
+    fn joiner_hears(&mut self, peer: u32, m: Msg) {
+        let Some(o) = &mut self.online else { return };
+        if o.host != Some(peer) {
+            return;
+        }
+        match m {
+            Msg::Lobby { seats, choice, you } => {
+                o.lobby = seats;
+                o.choice = choice;
+                o.seat = you;
+                o.status = "online_in_lobby";
+                if self.mode != Mode::Setup {
+                    // the host is back in the lobby after a round
+                    self.mode = Mode::Setup;
+                    self.round = None;
+                }
+            }
+            Msg::Start {
+                players,
+                owners,
+                plan,
+                seed,
+                you,
+            } => {
+                o.owners = owners
+                    .iter()
+                    .enumerate()
+                    .map(|(i, k)| match k.as_str() {
+                        _ if i == you => Owner::Here,
+                        "cpu" => Owner::Cpu,
+                        _ => Owner::There(0),
+                    })
+                    .collect();
+                o.inbox.clear();
+                o.tick = 0;
+                o.desync = None;
+                if plan.is_empty() || plan.iter().any(|h| *h >= self.holes.len()) {
+                    return;
+                }
+                self.plan = plan;
+                self.round = Some(Round::new(players, seed));
+                self.at = 0;
+                self.load_hole();
+            }
+            Msg::Steps { from, s } => {
+                let next = o.tick + o.inbox.len() as u32;
+                // an ordered channel never skips; drop anything already had
+                let skip = next.saturating_sub(from) as usize;
+                if from <= next {
+                    o.inbox.extend(s.into_iter().skip(skip));
+                }
+            }
+            Msg::Desync { tick } => o.desync = Some(tick),
+            Msg::Bye { why } => {
+                let key = ONLINE_WORDS
+                    .iter()
+                    .find(|w| **w == why)
+                    .copied()
+                    .unwrap_or("online_host_left");
+                self.online = None;
+                self.notice = Some(key);
+                self.round = None;
+                self.mode = Mode::Title;
+                self.course = Course::build(&self.holes[0], &self.pal);
+                self.build_scene();
+            }
+            _ => {}
+        }
+    }
+
+    /// Host: every joiner gets the lobby as it now stands.
+    fn lobby_changed(&mut self) {
+        let seats: Vec<Seat> = self
+            .slots
+            .iter()
+            .map(|(k, f)| Seat {
+                kind: k.name().to_string(),
+                frog: *f,
+            })
+            .collect();
+        let choice = self.choice;
+        let Some(o) = &mut self.online else { return };
+        if o.role != Role::Host {
+            return;
+        }
+        let peers: Vec<(u32, usize)> = o.peers.iter().map(|(p, s)| (*p, *s)).collect();
+        for (p, you) in peers {
+            o.send(
+                p,
+                &Msg::Lobby {
+                    seats: seats.clone(),
+                    choice,
+                    you,
+                },
+            );
         }
     }
 
@@ -378,16 +808,156 @@ impl Game {
         if bits & bit("drag") != 0 {
             self.orbit = fx::wrap(self.orbit - dx * DRAG_TURN / 100);
         }
+        let mut due = 0;
         while self.acc >= TICK_US {
             self.acc -= TICK_US;
-            let edges = self.pending;
-            self.pending = 0;
-            self.step(bits, edges);
+            due += 1;
+        }
+        let here_yaw = crate::geom::yaw_pitch_of(self.look.sub(self.eye)).0;
+        match self.role() {
+            None => {
+                for _ in 0..due {
+                    let e = std::mem::take(&mut self.pending);
+                    self.step(Step {
+                        b: bits,
+                        e,
+                        y: here_yaw,
+                        n: None,
+                        c: None,
+                    });
+                }
+            }
+            Some(Role::Host) => {
+                for _ in 0..due {
+                    let e = std::mem::take(&mut self.pending);
+                    let here = Step {
+                        b: bits,
+                        e,
+                        y: here_yaw,
+                        n: None,
+                        c: None,
+                    };
+                    self.host_tick(here);
+                }
+                if let Some(o) = &mut self.online {
+                    o.flush_steps();
+                }
+            }
+            Some(Role::Joiner) => {
+                let e = std::mem::take(&mut self.pending);
+                self.joiner_keys(bits, e, here_yaw);
+                let n = self.online.as_ref().map(|o| o.steps_to_run(due)).unwrap_or(0);
+                for _ in 0..n {
+                    let Some(s) = self.online.as_mut().and_then(|o| o.inbox.pop_front()) else {
+                        break;
+                    };
+                    self.step(s);
+                    self.joiner_ran();
+                }
+                if n == 0 {
+                    // nothing from the host yet: the camera and particles still move
+                    self.idle_frames(due);
+                }
+            }
         }
         self.render();
     }
 
-    fn step(&mut self, bits: u32, edges: u32) {
+    /// Frames that run no round: the camera, the particles and the clock of
+    /// the screens, as a step with nobody's keys would move them.
+    fn idle_frames(&mut self, n: usize) {
+        for _ in 0..n {
+            self.frame = (self.frame + 1) % fx::TURN;
+            for p in self.particles.iter_mut() {
+                p.step();
+            }
+            self.particles.retain(|p| p.life > 0);
+            self.update_camera();
+        }
+    }
+
+    /// Host: one tick of the stream. Before a round, the screens run as offline.
+    fn host_tick(&mut self, here: Step) {
+        let streaming =
+            self.round.is_some() && matches!(self.mode, Mode::Intro | Mode::Play | Mode::Card | Mode::Final);
+        if !streaming {
+            self.step(Step { c: None, ..here });
+            return;
+        }
+        let owner = match (&self.round, &self.online) {
+            (Some(r), Some(o)) if matches!(self.mode, Mode::Intro | Mode::Play) => {
+                o.owners.get(r.active).copied()
+            }
+            _ => None,
+        };
+        let s = match &mut self.online {
+            Some(o) => o.input_for(owner, here),
+            None => here,
+        };
+        self.step(s);
+        let sum = self.round.as_ref().map(|r| r.checksum());
+        if let Some(o) = &mut self.online {
+            o.ran(s, sum);
+        }
+    }
+
+    /// Joiner: send the host my keys. A press is sent as it happens, with
+    /// the needle as my screen showed it; held keys when they change.
+    fn joiner_keys(&mut self, bits: u32, edges: u32, yaw: i32) {
+        let needle = match &self.round {
+            Some(r) if r.phase == Phase::Meter => Some(r.needle),
+            _ => None,
+        };
+        let Some(o) = &mut self.online else { return };
+        for name in PRESS_ACTIONS {
+            let b = bit(name);
+            if edges & b != 0 {
+                o.to_host(&Msg::Press {
+                    a: b,
+                    n: if *name == "swing" { needle } else { None },
+                });
+            }
+        }
+        let held = HOLD_ACTIONS.iter().fold(0, |acc, n| acc | (bits & bit(n)));
+        o.hold_age += 1;
+        if (held, yaw) != o.last_hold || o.hold_age >= online::HOLD_EVERY {
+            o.last_hold = (held, yaw);
+            o.hold_age = 0;
+            o.to_host(&Msg::Hold { b: held, y: yaw });
+        }
+    }
+
+    /// Joiner: a step from the host has been run; every so often, say what
+    /// my copy of the round looks like.
+    fn joiner_ran(&mut self) {
+        let sum = self.round.as_ref().map(|r| r.checksum());
+        let Some(o) = &mut self.online else { return };
+        let t = o.tick;
+        o.tick += 1;
+        if let Some(sum) = sum {
+            if t.is_multiple_of(online::SUM_EVERY) {
+                o.to_host(&Msg::Sum { tick: t, sum });
+            }
+        }
+    }
+
+    fn step(&mut self, s: Step) {
+        let (bits, edges) = (s.b, s.e);
+        match s.c {
+            Some(Cmd::TeeOff) => self.do_tee_off(),
+            Some(Cmd::NextHole) => self.do_next_hole(),
+            Some(Cmd::Cpu(i)) => {
+                if let Some(r) = &mut self.round {
+                    r.hand_to_cpu(i);
+                }
+                if let Some(o) = &mut self.online {
+                    if let Some(w) = o.owners.get_mut(i) {
+                        *w = Owner::Cpu;
+                    }
+                }
+            }
+            None => {}
+        }
         // animation angles are frame × a rate; wrapping at a whole turn keeps them smooth
         self.frame = (self.frame + 1) % fx::TURN;
         for p in self.particles.iter_mut() {
@@ -398,7 +968,7 @@ impl Game {
             Mode::Intro => {
                 self.intro_t += 1;
                 if edges & bit("swing") != 0 && self.intro_t > secs(400) {
-                    self.tee_off();
+                    self.do_tee_off();
                 }
             }
             Mode::Play => {
@@ -413,7 +983,8 @@ impl Game {
                     tongue: edge("tongue"),
                     loft: edge("loft"),
                     cancel: edge("cancel"),
-                    cam_yaw: crate::geom::yaw_pitch_of(self.look.sub(self.eye)).0,
+                    cam_yaw: s.y,
+                    needle: s.n,
                 };
                 let mut notes = Vec::new();
                 if let Some(r) = &mut self.round {
@@ -442,12 +1013,16 @@ impl Game {
 
     fn hole_done(&mut self) {
         let id = self.course.def.id.clone();
-        if let Some(r) = &self.round {
-            for p in r.players.iter().filter(|p| !p.cpu) {
-                let s = p.strokes;
-                if self.best.get(&id).map(|b| s < *b).unwrap_or(true) {
-                    self.best.insert(id.clone(), s);
-                }
+        let strokes: Vec<i32> = match &self.round {
+            Some(r) => (0..r.players.len())
+                .filter(|i| self.is_local(*i))
+                .map(|i| r.players[i].strokes)
+                .collect(),
+            None => Vec::new(),
+        };
+        for s in strokes {
+            if self.best.get(&id).map(|b| s < *b).unwrap_or(true) {
+                self.best.insert(id.clone(), s);
             }
         }
         self.mode = Mode::Card;
@@ -734,7 +1309,7 @@ impl Game {
         // the aiming guide: only for a person aiming, recomputed when the aim changes
         let show_guide = matches!(&self.round, Some(r) if self.mode == Mode::Play
             && matches!(r.phase, Phase::Aim | Phase::Meter)
-            && !r.players[r.active].cpu);
+            && self.is_local(r.active));
         if show_guide {
             let r = self.round.as_ref().unwrap();
             let key = (r.yaw, r.power, r.loft, r.players[r.active].lie);
@@ -848,6 +1423,15 @@ impl Game {
         let mut h = json!({
             "mode": self.mode.name(),
             "sounds": self.sounds,
+            "notice": self.notice,
+            "online": self.online.as_ref().map(|o| json!({
+                "role": if o.role == Role::Host { "host" } else { "joiner" },
+                "room": o.room,
+                "status": o.status,
+                "players": o.peers.len(),
+                "desync": o.desync,
+                "behind": o.inbox.len(),
+            })),
         });
         let Some(r) = &self.round else {
             return h.to_string();
@@ -859,7 +1443,7 @@ impl Game {
         let cam = self.camera();
         let p = &r.players[r.active];
         let d = &self.frogs[p.frog];
-        let human = !p.cpu;
+        let human = self.is_local(r.active);
         let phase = match r.phase {
             Phase::Aim => "aim",
             Phase::Meter => "meter",
@@ -880,7 +1464,13 @@ impl Game {
                     "prompt_flight"
                 }
             }
-            (Phase::Aim | Phase::Meter | Phase::Swing | Phase::Flight, false) => "prompt_cpu",
+            (Phase::Aim | Phase::Meter | Phase::Swing | Phase::Flight, false) => {
+                if p.cpu {
+                    "prompt_cpu"
+                } else {
+                    "prompt_online"
+                }
+            }
             _ => "",
         };
         let tags: Vec<Value> = r
@@ -980,18 +1570,57 @@ impl Game {
     pub fn screen_json(&self) -> String {
         match self.mode {
             Mode::Setup => {
-                let slots: Vec<Value> = self
-                    .slots
+                // a joiner shows the host's lobby, with its own seat marked
+                let (seats, choice): (Vec<(String, usize)>, usize) = match &self.online {
+                    Some(o) if o.role == Role::Joiner => (
+                        o.lobby
+                            .iter()
+                            .enumerate()
+                            .map(|(i, st)| {
+                                (
+                                    if i == o.seat && st.kind == "remote" {
+                                        "you".to_string()
+                                    } else {
+                                        st.kind.clone()
+                                    },
+                                    st.frog,
+                                )
+                            })
+                            .collect(),
+                        o.choice,
+                    ),
+                    _ => (
+                        self.slots
+                            .iter()
+                            .map(|(k, f)| (k.name().to_string(), *f))
+                            .collect(),
+                        self.choice,
+                    ),
+                };
+                let slots: Vec<Value> = seats
                     .iter()
-                    .map(|(k, f)| json!({ "kind": k.name(), "frog": self.frog_json(*f) }))
+                    .map(
+                        |(k, f)| json!({ "kind": k, "frog": self.frog_json((*f).min(self.frogs.len() - 1)) }),
+                    )
                     .collect();
-                let course = if self.choice == 0 {
+                let online = self.online.as_ref().map(|o| {
+                    json!({
+                        "role": if o.role == Role::Host { "host" } else { "joiner" },
+                        "room": o.room,
+                        "status": o.status,
+                        "players": o.peers.len(),
+                        "seat": o.seat,
+                        "joined": o.role == Role::Host || !o.lobby.is_empty(),
+                    })
+                });
+                let course = if choice == 0 {
                     json!({ "key": "course_full", "name": "", "par": self.holes.iter().map(|h| h.par).sum::<i32>(), "holes": self.holes.len() })
                 } else {
-                    let h = &self.holes[self.choice - 1];
+                    let h = &self.holes[(choice - 1).min(self.holes.len() - 1)];
                     json!({ "key": "course_one", "name": h.name, "par": h.par, "holes": 1 })
                 };
-                json!({ "slots": slots, "course": course, "best_round": self.best_round }).to_string()
+                json!({ "slots": slots, "course": course, "best_round": self.best_round, "online": online })
+                    .to_string()
             }
             Mode::Intro => {
                 let c = &self.course;
@@ -1415,6 +2044,198 @@ pub(crate) mod tests {
         );
         let back = Game::new(files().frogs, files().course, files().palette, &g.saved()).unwrap();
         assert_eq!(back.rounds, 1);
+    }
+
+    /// Browsers on a pretend network: each message arrives `lag` frames
+    /// after it was sent, in order.
+    struct Net {
+        games: Vec<Game>,
+        ids: Vec<u32>,
+        wire: Vec<(usize, usize, u32, String)>,
+        lag: usize,
+        frame: usize,
+    }
+
+    impl Net {
+        fn new(joiners: usize, lag: usize) -> Net {
+            let mut games: Vec<Game> = (0..=joiners).map(|_| game()).collect();
+            games[0].begin();
+            for i in 1..SLOTS {
+                games[0].slots[i].0 = Slot::Human;
+                games[0].slots[i].1 = i;
+            }
+            let room = games[0].host_online("build", 42);
+            for g in games.iter_mut().skip(1) {
+                assert!(g.join_online("build", &room));
+            }
+            // the transport: the host is peer 0 to every joiner; joiner k is peer k to the host
+            for k in 1..=joiners {
+                games[0].net_peer(k as u32);
+                games[k].net_peer(0);
+            }
+            Net {
+                games,
+                ids: (0..=joiners as u32).collect(),
+                wire: Vec::new(),
+                lag,
+                frame: 0,
+            }
+        }
+
+        fn frame(&mut self, bits: &[u32]) {
+            self.frame += 1;
+            for (k, g) in self.games.iter_mut().enumerate() {
+                let now = g.last_us.unwrap_or(0) + 16_667;
+                g.advance(now, bits.get(k).copied().unwrap_or(0), 0, 0);
+                let out: Vec<(u32, String)> = serde_json::from_str(&g.net_outbox()).unwrap();
+                for (to, text) in out {
+                    let to_index = if k == 0 { to as usize } else { 0 };
+                    self.wire
+                        .push((self.frame + self.lag, to_index, self.ids[k], text));
+                }
+            }
+            let now = self.frame;
+            let (due, later): (Vec<_>, Vec<_>) = self.wire.drain(..).partition(|(at, ..)| *at <= now);
+            self.wire = later;
+            for (_, to, from, text) in due {
+                // the host knows joiner k as peer k; a joiner knows the host as peer 0
+                let from_id = if to == 0 { from } else { 0 };
+                self.games[to].net_message(from_id, &text);
+            }
+        }
+    }
+
+    #[test]
+    fn four_browsers_play_a_whole_round_online_and_every_copy_agrees() {
+        let mut web = Net::new(3, 6);
+        for _ in 0..30 {
+            web.frame(&[]);
+        }
+        for k in 1..=3 {
+            let s: Value = serde_json::from_str(&web.games[k].screen_json()).unwrap();
+            assert_eq!(s["slots"][k]["kind"], "you", "joiner {k} sees its own seat");
+        }
+        // the fourth seat to a CPU, so CPUs and people mix
+        web.games[0].slots[3].0 = Slot::Cpu;
+        web.games[0].slots[2].1 = 6;
+        web.games[0].start_round();
+        let mut compared = 0;
+        let mut f = 0;
+        while web.games[0].mode != Mode::Final && f < 120_000 {
+            f += 1;
+            match web.games[0].mode {
+                Mode::Intro if f % 50 == 0 => web.games[0].tee_off(),
+                Mode::Card if f % 50 == 0 => web.games[0].next_hole(),
+                _ => {}
+            }
+            // everyone taps Space now and then: whoever's turn it is swings
+            let tap = if f % 37 == 0 { bit("swing") } else { 0 };
+            web.frame(&[tap, tap, tap, tap]);
+            // a joiner's copy, at the tick it has reached, agrees with the host's record
+            for k in 1..=3 {
+                let (t, sum) = {
+                    let o = web.games[k].online.as_ref().unwrap();
+                    (o.tick, web.games[k].round.as_ref().map(|r| r.checksum()))
+                };
+                if t > 0 && (t - 1) % online::SUM_EVERY == 0 {
+                    if let (Some(sum), Some(mine)) =
+                        (sum, web.games[0].online.as_ref().unwrap().sums.get(&(t - 1)))
+                    {
+                        assert_eq!(sum, *mine, "joiner {k} drifted at tick {}", t - 1);
+                        compared += 1;
+                    }
+                }
+            }
+        }
+        assert_eq!(web.games[0].mode, Mode::Final, "the round finished");
+        assert_eq!(web.games[0].online.as_ref().unwrap().desync, None);
+        assert!(compared > 20, "checksums compared: {compared}");
+        for _ in 0..40 {
+            web.frame(&[]);
+        }
+        let host: Value = serde_json::from_str(&web.games[0].screen_json()).unwrap();
+        for k in 1..=3 {
+            assert_eq!(
+                web.games[k].mode,
+                Mode::Final,
+                "joiner {k} reached the final card"
+            );
+            let theirs: Value = serde_json::from_str(&web.games[k].screen_json()).unwrap();
+            assert_eq!(
+                theirs["rows"], host["rows"],
+                "joiner {k}'s scorecard matches the host's"
+            );
+        }
+    }
+
+    #[test]
+    fn a_joiner_who_leaves_mid_round_is_played_by_the_cpu_and_the_host_leaving_ends_it() {
+        let mut web = Net::new(2, 3);
+        for _ in 0..20 {
+            web.frame(&[]);
+        }
+        web.games[0].slots[3].0 = Slot::Off;
+        web.games[0].start_round();
+        for _ in 0..20 {
+            web.frame(&[]);
+        }
+        web.games[0].tee_off();
+        for _ in 0..30 {
+            web.frame(&[]);
+        }
+        web.games[0].net_left(2);
+        for _ in 0..30 {
+            web.frame(&[]);
+        }
+        let r = web.games[0].round.as_ref().unwrap();
+        assert!(r.players[2].cpu, "the seat is the CPU's now");
+        assert!(
+            web.games[1].round.as_ref().unwrap().players[2].cpu,
+            "on the other joiner's copy too"
+        );
+        web.games[0].quit();
+        for _ in 0..10 {
+            web.frame(&[]);
+        }
+        assert_eq!(web.games[1].mode, Mode::Title);
+        assert_eq!(web.games[1].notice, Some("online_host_left"));
+    }
+
+    #[test]
+    fn a_full_room_and_a_different_build_are_turned_away() {
+        let mut g = game();
+        g.begin();
+        g.slots[1].0 = Slot::Off;
+        g.slots[2].0 = Slot::Off;
+        g.slots[3].0 = Slot::Off;
+        g.host_online("b1", 1);
+        g.net_message(
+            9,
+            &online::encode(&Msg::Hello {
+                proto: online::PROTO,
+                build: "b2".into(),
+            }),
+        );
+        assert!(g.net_outbox().contains("online_build"));
+        g.net_message(
+            9,
+            &online::encode(&Msg::Hello {
+                proto: online::PROTO,
+                build: "b1".into(),
+            }),
+        );
+        assert!(g.net_outbox().contains("online_full"), "no open seat");
+        g.cycle_slot(1);
+        assert_eq!(g.slots[1].0, Slot::Open, "after off comes open while hosting");
+        g.net_message(
+            9,
+            &online::encode(&Msg::Hello {
+                proto: online::PROTO,
+                build: "b1".into(),
+            }),
+        );
+        assert_eq!(g.slots[1].0, Slot::Remote(9));
+        assert!(g.net_outbox().contains("Lobby"));
     }
 
     #[test]

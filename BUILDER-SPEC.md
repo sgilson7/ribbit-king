@@ -48,4 +48,5 @@ These stay with the person and go in `BRIEF.md` or `PLAN.md`:
 
 | Default | Changed to | Reason | Recorded in |
 | --- | --- | --- | --- |
-| | | | |
+| D4 CSP `connect-src 'self'` | `connect-src 'self' wss:` | Online play by room code reaches public Nostr relays over secure WebSockets; nothing opens one until a person hosts or joins (R7's load-and-idle path is unchanged, and the browser check still proves it). | PLAN.md P16, SECOND-ORDER.md S11, `the_transport_stays_in_web_net` |
+| D3 and the page scan cover all page JavaScript | `web/net/` (the WebRTC transport and its pinned Trystero bundle) is outside the scan, fenced by its own test | A transport needs `RTCPeerConnection`, timers and byte values; it decides no rule of the game, and the core decides everything it carries. | PLAN.md P16, SECOND-ORDER.md S11 |

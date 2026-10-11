@@ -74,6 +74,9 @@ export function makeHud(copy, play) {
       el("h-hole").textContent = h.hole.name;
       el("h-of").textContent = fill(copy.hole_of, h.hole);
       el("h-par").textContent = fill(copy.par, h.hole);
+      const o = h.online;
+      el("h-online").hidden = !o;
+      if (o) el("h-online").textContent = o.desync !== null ? copy.online_desync : o.room ? fill(copy.online_badge, { room: o.room }) : copy.online_badge_code;
       const p = h.player;
       el("p-face").src = `art/frogs/${p.frog}.png`;
       el("p-name").textContent = p.cpu ? `${p.name} (${copy.slot_cpu})` : p.name;

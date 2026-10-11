@@ -135,6 +135,45 @@ impl Game {
         self.inner.again()
     }
 
+    /// Host online from the setup screen; the page's clock seeds the room code.
+    pub fn host_online(&mut self, build: &str, now_ms: f64) -> String {
+        self.inner.host_online(build, now_ms as u64)
+    }
+
+    /// Join by a room code, or by a pasted invitation with an empty code.
+    pub fn join_online(&mut self, build: &str, code: &str) -> bool {
+        self.inner.join_online(build, code)
+    }
+
+    pub fn leave_online(&mut self) {
+        self.inner.leave_online()
+    }
+
+    pub fn room(&self) -> String {
+        self.inner.room()
+    }
+
+    pub fn net_peer(&mut self, peer: u32) {
+        self.inner.net_peer(peer)
+    }
+
+    pub fn net_left(&mut self, peer: u32) {
+        self.inner.net_left(peer)
+    }
+
+    pub fn net_error(&mut self, key: &str) {
+        self.inner.net_error(key)
+    }
+
+    pub fn net_message(&mut self, peer: u32, text: &str) {
+        self.inner.net_message(peer, text)
+    }
+
+    /// What to send, as JSON `[[peer, text], ...]`.
+    pub fn net_outbox(&mut self) -> String {
+        self.inner.net_outbox()
+    }
+
     /// The record, for the page to keep in local storage.
     pub fn saved(&self) -> String {
         self.inner.saved()

@@ -122,6 +122,10 @@ pub struct Input {
     pub loft: bool,
     pub cancel: bool,
     pub cam_yaw: i32,
+    /// online: where the needle stood on the swinging player's own screen
+    /// when they pressed, so their timing is judged as they saw it, not
+    /// late by the round trip to the host
+    pub needle: Option<i32>,
 }
 
 impl Round {
@@ -387,6 +391,61 @@ impl Round {
         self.physics(c, input, notes);
     }
 
+    /// A seat whose player left an online round is played by the CPU from
+    /// here on.
+    pub fn hand_to_cpu(&mut self, i: usize) {
+        if let Some(p) = self.players.get_mut(i) {
+            p.cpu = true;
+        }
+        if i == self.active && matches!(self.phase, Phase::Meter) {
+            self.phase = Phase::Aim;
+            self.t = 0;
+        }
+        self.cpu_plan = None;
+    }
+
+    /// A fingerprint of everything the rules hold, for two copies of a round
+    /// to compare: if they ever differ, the copies have drifted apart.
+    pub fn checksum(&self) -> u64 {
+        let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+        let mut mix = |v: i64| {
+            h ^= v as u64;
+            h = h.wrapping_mul(0x0000_0100_0000_01b3);
+        };
+        mix(self.tick as i64);
+        mix(self.active as i64);
+        mix(self.phase as i64);
+        mix(self.t as i64);
+        mix(self.yaw as i64);
+        mix(self.power as i64);
+        mix(self.loft as i64);
+        mix(self.needle as i64);
+        mix(self.taken as i64);
+        for p in &self.players {
+            for v in [
+                p.body.pos.x,
+                p.body.pos.y,
+                p.body.pos.z,
+                p.body.vel.x,
+                p.body.vel.y,
+                p.body.vel.z,
+            ] {
+                mix(v as i64);
+            }
+            for v in [
+                p.strokes,
+                p.flies,
+                p.jumps,
+                p.holed as i32,
+                p.cpu as i32,
+                p.body.wings,
+            ] {
+                mix(v as i64);
+            }
+        }
+        h
+    }
+
     fn all_still(&self) -> bool {
         self.players.iter().all(|p| p.holed || !p.body.moving)
     }
@@ -437,7 +496,8 @@ impl Round {
             return;
         }
         if input.swing {
-            let shot = self.whack(self.needle);
+            let at = input.needle.map(|n| n & (TURN - 1)).unwrap_or(self.needle);
+            let shot = self.whack(at);
             self.shot = Some(shot);
             self.phase = Phase::Swing;
             self.t = 0;

@@ -18,6 +18,7 @@ pub mod fx;
 pub mod game;
 pub mod geom;
 pub mod mesh;
+pub mod online;
 pub mod render;
 pub mod rng;
 pub mod round;

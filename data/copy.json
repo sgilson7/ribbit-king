@@ -99,29 +99,126 @@
   "help_title": "How to play",
   "help_intro": "Frolf is golf played with frogs. Each frog sits on a catapult; whack it with the mallet and the frog flies. Fewest strokes into the lotus wins, and the best frog on the card is crowned the Ribbit King.",
   "help_rows": [
-    ["The swing", "Aim with A and D (or the arrows), set the mallet's power with W and S, and change the loft with Q. The dotted arc shows where a perfect hit at that power first lands. Press Space: the needle starts round the dial. Press Space again to whack. In the gold is a perfect hit: full power, dead straight and a little extra. Elsewhere on the red bar is weaker, and early hooks left, late slices right. Off the bar is a whiff."],
-    ["In the air", "You fly your frog. W A S D steer it, relative to the camera. Drag the view with the mouse to look around."],
-    ["Lily pads and webs", "Land on a lily pad or a spider web and it throws you back up. Webs throw harder."],
-    ["Extra jump", "The spring power-up. Press Space in the air to hop again. You can carry three."],
-    ["Wings", "Like the wing cap: glide for a few seconds. A and D bank, W dives to gain speed, S climbs."],
-    ["Explosive mushroom", "Touch one and it goes off, blasting you up and away."],
-    ["Flies", "Lines of flies hang over every hole. Catch ten and your tongue is ready: press E with another frog in reach to knock it flying. Knock one into the water and it takes a penalty stroke."],
-    ["Hazards", "Water, lava and out of bounds cost a stroke, and the frog goes back to where it was hit from."],
-    ["Turns", "Everyone tees off in order; after that, the frog farthest from the lotus plays next, as in golf. A hole is given up at five over par."]
+    [
+      "The swing",
+      "Aim with A and D (or the arrows), set the mallet's power with W and S, and change the loft with Q. The dotted arc shows where a perfect hit at that power first lands. Press Space: the needle starts round the dial. Press Space again to whack. In the gold is a perfect hit: full power, dead straight and a little extra. Elsewhere on the red bar is weaker, and early hooks left, late slices right. Off the bar is a whiff."
+    ],
+    [
+      "In the air",
+      "You fly your frog. W A S D steer it, relative to the camera. Drag the view with the mouse to look around."
+    ],
+    [
+      "Lily pads and webs",
+      "Land on a lily pad or a spider web and it throws you back up. Webs throw harder."
+    ],
+    [
+      "Extra jump",
+      "The spring power-up. Press Space in the air to hop again. You can carry three."
+    ],
+    [
+      "Wings",
+      "Like the wing cap: glide for a few seconds. A and D bank, W dives to gain speed, S climbs."
+    ],
+    [
+      "Explosive mushroom",
+      "Touch one and it goes off, blasting you up and away."
+    ],
+    [
+      "Flies",
+      "Lines of flies hang over every hole. Catch ten and your tongue is ready: press E with another frog in reach to knock it flying. Knock one into the water and it takes a penalty stroke."
+    ],
+    [
+      "Hazards",
+      "Water, lava and out of bounds cost a stroke, and the frog goes back to where it was hit from."
+    ],
+    [
+      "Turns",
+      "Everyone tees off in order; after that, the frog farthest from the lotus plays next, as in golf. A hole is given up at five over par."
+    ],
+    [
+      "Online",
+      "Choose Play, then Host online: the setup screen shows a room code. Others choose Play online on the title screen and type it. Empty seats (click a seat's button until it says Open seat) wait for players; each joiner picks their own frog, and the host picks the course and starts. On your turn you play from your own browser; on everyone else's you watch it live. If a player leaves, the CPU takes their frog."
+    ]
   ],
   "controls_title": "Keys",
   "controls": [
-    ["A D or ← →", "Aim; steer in the air"],
-    ["W S or ↑ ↓", "Power; steer in the air"],
-    ["Q", "Change loft"],
-    ["Space or Enter", "Start the meter, whack; jump in the air"],
-    ["X", "Back out of the meter"],
-    ["E", "Tongue (10 flies)"],
-    ["Mouse drag", "Look around"],
-    ["Esc", "Pause"],
-    ["N", "Sound on or off"]
+    [
+      "A D or ← →",
+      "Aim; steer in the air"
+    ],
+    [
+      "W S or ↑ ↓",
+      "Power; steer in the air"
+    ],
+    [
+      "Q",
+      "Change loft"
+    ],
+    [
+      "Space or Enter",
+      "Start the meter, whack; jump in the air"
+    ],
+    [
+      "X",
+      "Back out of the meter"
+    ],
+    [
+      "E",
+      "Tongue (10 flies)"
+    ],
+    [
+      "Mouse drag",
+      "Look around"
+    ],
+    [
+      "Esc",
+      "Pause"
+    ],
+    [
+      "N",
+      "Sound on or off"
+    ]
   ],
   "touch_swing": "Swing",
   "touch_tongue": "Tongue",
-  "touch_loft": "Loft"
+  "touch_loft": "Loft",
+  "online_play": "Play online",
+  "online_title": "Play online",
+  "online_join_hint": "Up to four frogs in four browsers. One person hosts from the setup screen and tells the others the room code.",
+  "online_room_label": "Room",
+  "online_join": "Join",
+  "online_bad_room": "A room code is 4 to 12 letters and numbers.",
+  "online_by_code": "Join with an invitation code instead",
+  "online_paste_invite": "If the room code will not connect, the host can make an invitation code. Paste it here:",
+  "online_make_reply": "Make my reply",
+  "online_send_reply": "Send this reply back to the host:",
+  "online_host_room": "Host online",
+  "online_host_code": "Host with invitation codes",
+  "online_share": "Others join from Play online with the room code, or with this link:",
+  "online_invite_by_code": "Invite someone with a pasted code",
+  "online_new_invite": "Make an invitation",
+  "online_paste_reply": "Paste their reply here:",
+  "online_accept": "Let them in",
+  "online_stop": "Stop hosting",
+  "online_leave": "Leave",
+  "online_waiting_host": "Waiting for the host to start",
+  "online_badge": "Online · room {room}",
+  "online_badge_code": "Online",
+  "online_desync": "The copies of this round disagree. Start a new round.",
+  "online_hosting": "Waiting for frogs to join",
+  "online_joining": "Looking for the room…",
+  "online_in_lobby": "In the lobby",
+  "online_full": "That room is full.",
+  "online_build": "That room is on a different version of the game. Reload both pages.",
+  "online_started": "That round has already started.",
+  "online_left": "A player left.",
+  "online_host_left": "The host left the game.",
+  "online_no_relay": "Could not reach the relays that introduce players. Try an invitation code.",
+  "online_no_path": "Could not connect to that player: one of you may be behind a strict network. Try another network.",
+  "online_bad_code": "That code did not work. Copy the whole thing and try again.",
+  "online_players": "{n} joined",
+  "slot_open": "Open seat",
+  "slot_remote": "Online player",
+  "slot_you": "You",
+  "prompt_online": "{who} is playing"
 }

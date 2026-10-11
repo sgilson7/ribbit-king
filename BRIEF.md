@@ -10,6 +10,12 @@
 > The game is called Ribbit King
 > it was released on the GameCube in 2003.
 
+## Round 2 (Sam, 10 October 2026)
+
+> ribbit king is great, now make it 4 player online multiplayer using other multiplayer frameworks from builder and sgilson7 repos
+
+Done means: up to four people, each in their own browser, play one round together. They meet by a code, the way Floodline and Vagrancy do, with no server of ours. The game stays deployed on Pages. The earlier approvals (public repository, Pages, website) stand.
+
 ## Done means
 
 A 3D browser game, deployed on GitHub Pages and listed on sgilson7.github.io, in which up to four frogs (people or CPU) play a round on four themed holes with every mechanic above, built as a Builder project whose `./scripts/check.sh` passes.

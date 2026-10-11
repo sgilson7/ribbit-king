@@ -25,17 +25,22 @@ export function makeScreens(game, copy, refresh) {
 
   return {
     setup(s) {
+      const online = s.online;
+      const joiner = online && online.role === "joiner";
       const slots = el("slots");
       slots.replaceChildren();
       s.slots.forEach((slot, i) => {
         const box = make("div", `slot ${slot.kind}`);
         const kind = make("button", "kind", copy[`slot_${slot.kind}`]);
         kind.title = copy.slot_toggle;
+        kind.disabled = joiner;
         kind.addEventListener("click", act(() => game.cycle_slot(i)));
         box.append(kind);
+        // a joiner may change only its own frog
+        const mine = !joiner || slot.kind === "you";
         if (slot.kind !== "off") {
           const img = face(slot.frog);
-          img.addEventListener("click", act(() => game.cycle_frog(i, true)));
+          if (mine) img.addEventListener("click", act(() => game.cycle_frog(i, true)));
           const row = make("div", "row");
           const prev = make("button", "arrow", "◀");
           prev.setAttribute("aria-label", copy.frog_prev);
@@ -45,12 +50,29 @@ export function makeScreens(game, copy, refresh) {
           next.addEventListener("click", act(() => game.cycle_frog(i, true)));
           const name = make("span", "frog-name", slot.frog.name);
           name.style.color = slot.frog.colour;
+          prev.disabled = !mine;
+          next.disabled = !mine;
           row.append(prev, name, next);
           box.append(img, row, make("div", "frog-kind", slot.frog.kind));
         }
         slots.append(box);
       });
       el("course-name").textContent = fill(copy[s.course.key], s.course);
+      el("course-prev").disabled = joiner;
+      el("course-next").disabled = joiner;
+      el("start").hidden = joiner;
+      el("offline-only").hidden = Boolean(online);
+      el("host-info").hidden = !online || joiner;
+      el("joiner-info").hidden = !joiner;
+      if (online && !joiner) {
+        el("room-show").textContent = online.room;
+        el("room-link").textContent = online.room ? `${location.origin}${location.pathname}#room=${online.room}` : "";
+        el("host-status").textContent = online.players ? fill(copy.online_players, { n: online.players }) : copy[online.status];
+      }
+      if (joiner) {
+        el("joiner-room").textContent = online.room || "–";
+        el("joiner-status").textContent = online.joined && online.status === "online_in_lobby" ? copy.online_waiting_host : copy[online.status];
+      }
       el("best-round").textContent = s.best_round === null ? "" : fill(copy.best_round, { n: s.best_round });
     },
 

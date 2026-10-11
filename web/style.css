@@ -154,3 +154,19 @@ body[data-ready="true"] #loading { display: none; }
   #top-right { font-size: 0.8em; }
   #prompt { font-size: 0.75em; white-space: normal; text-align: center; width: 90vw; bottom: 120px; }
 }
+
+/* online */
+.notice { font-weight: 800; color: var(--lotus-deep); }
+.notice:empty { display: none; }
+.online-row { display: flex; gap: 0.5em; align-items: center; flex-wrap: wrap; }
+#room-code { font: inherit; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; width: 8em; padding: 0.4em 0.6em; border: 3px solid var(--ink); border-radius: 10px; background: #fff; }
+textarea { width: 100%; font: 0.75em ui-monospace, Menlo, monospace; border: 2px solid var(--ink); border-radius: 8px; padding: 0.4em; background: #fff; word-break: break-all; }
+details { margin-top: 0.8em; }
+summary { cursor: pointer; font-weight: 700; }
+#online-panel { margin-top: 0.6em; border-top: 2px dashed rgba(59, 35, 64, 0.3); padding-top: 0.4em; }
+.room { font-size: 1.4em; letter-spacing: 0.15em; color: var(--lotus-deep); }
+#room-link { word-break: break-all; }
+.online-badge { color: var(--lotus-deep); font-weight: 700; }
+.slot.remote .kind, .slot.you .kind { background: #bfd8f0; }
+.slot.open { border-style: dashed; }
+button:disabled { opacity: 0.45; cursor: default; box-shadow: none; transform: none; }

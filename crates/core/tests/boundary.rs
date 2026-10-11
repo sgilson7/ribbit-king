@@ -732,3 +732,62 @@ fn csp_reader_finds_the_policy_and_reports_its_absence() {
     );
     assert_eq!(csp_of("<meta charset=\"utf-8\">"), None);
 }
+
+/// Project decision (PLAN.md P16, BUILDER-SPEC.md changes to the defaults):
+/// online play needs a transport, and a transport needs timers, byte values
+/// and `RTCPeerConnection`, none of which the page scan allows. So it lives
+/// in `web/net/`, outside that scan, and this test keeps it fenced: the
+/// folder holds only the transport and its pinned bundle, only `online.js`
+/// imports it, and the page may connect to nothing but its own origin and
+/// secure WebSockets (the relays a room code is introduced over).
+#[test]
+fn the_transport_stays_in_web_net() {
+    let web = repo_root().join("web");
+    let mut found: Vec<String> = Vec::new();
+    let mut stack = vec![web.join("net")];
+    while let Some(d) = stack.pop() {
+        for e in fs::read_dir(&d).expect("read web/net") {
+            let p = e.expect("entry").path();
+            if p.is_dir() {
+                stack.push(p);
+            } else {
+                found.push(p.strip_prefix(&web).unwrap().to_string_lossy().replace('\\', "/"));
+            }
+        }
+    }
+    found.sort();
+    assert_eq!(
+        found,
+        [
+            "net/config.js",
+            "net/rtc.js",
+            "net/vendor/README.md",
+            "net/vendor/SHA256SUMS",
+            "net/vendor/trystero-nostr-0.25.4.js"
+        ],
+        "web/net holds the transport and nothing else"
+    );
+    for path in web_files() {
+        let text = fs::read_to_string(&path).expect("read page file");
+        let imports = text.contains("net/rtc.js");
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        assert!(
+            !imports || name == "online.js",
+            "{name} reaches the transport directly; only online.js may"
+        );
+        if name.ends_with(".html") {
+            let csp = csp_of(&text).expect("a CSP");
+            let connect = csp
+                .split(';')
+                .map(str::trim)
+                .find(|d| d.starts_with("connect-src"))
+                .expect("connect-src");
+            for source in connect.split_whitespace().skip(1) {
+                assert!(
+                    ["'self'", "wss:"].contains(&source),
+                    "{name}: connect-src allows {source}"
+                );
+            }
+        }
+    }
+}

@@ -3,10 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- Reference default. connect-src 'self' keeps fetches on this origin;
+  <!-- Reference default, widened by one word: connect-src adds wss: so the
+       room-code path can reach the public Nostr relays that introduce two
+       browsers (web/net/; BUILDER-SPEC.md, changes to the defaults). Nothing
+       opens one until a person hosts or joins by room code.
+       connect-src 'self' keeps fetches on this origin;
        'wasm-unsafe-eval' lets the page compile its own WebAssembly module;
        form-action 'none' blocks form posts. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' wss:; style-src 'self'; img-src 'self' data:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Ribbit King</title>
   <meta name="description" content="Frolf in the browser: golf played with frogs. Whack your frog off a catapult, fly it through flies, lily pads, webs and mushrooms, and land it in the lotus. Four holes, up to four frogs, people or CPU.">
   <link rel="stylesheet" href="style.css">
@@ -21,6 +25,7 @@
     <div id="top-left" class="panel">
       <div class="hole-name" id="h-hole"></div>
       <div class="hole-sub"><span id="h-of"></span> · <span id="h-par"></span></div>
+      <div class="hole-sub online-badge" id="h-online" hidden></div>
     </div>
     <div id="top-right" class="panel">
       <ol id="h-standings"></ol>
@@ -74,9 +79,38 @@
       <p class="tagline" data-copy="tagline"></p>
       <div class="buttons">
         <button id="play" class="primary" data-copy="play"></button>
+        <button id="online-open" data-copy="online_play"></button>
         <button class="open-help" data-copy="how"></button>
       </div>
+      <p class="notice" id="notice"></p>
       <p class="fine" data-copy="fan_note"></p>
+    </div>
+  </section>
+
+  <!-- joining an online round -->
+  <section id="online" class="overlay sheet-bg" hidden>
+    <div class="sheet">
+      <h2 data-copy="online_title"></h2>
+      <p class="hint" data-copy="online_join_hint"></p>
+      <div class="online-row">
+        <label for="room-code" data-copy="online_room_label"></label>
+        <input id="room-code" type="text" autocomplete="off" spellcheck="false" maxlength="12">
+        <button id="join-room" class="primary" data-copy="online_join"></button>
+      </div>
+      <p class="fine" id="join-error"></p>
+      <details>
+        <summary data-copy="online_by_code"></summary>
+        <p class="hint" data-copy="online_paste_invite"></p>
+        <textarea id="invite-in" rows="3"></textarea>
+        <div class="buttons"><button id="make-reply" data-copy="online_make_reply"></button></div>
+        <div id="reply-box" hidden>
+          <p class="hint" data-copy="online_send_reply"></p>
+          <textarea id="reply-out" rows="3" readonly></textarea>
+        </div>
+      </details>
+      <div class="buttons">
+        <button id="online-back" data-copy="back"></button>
+      </div>
     </div>
   </section>
 
@@ -93,6 +127,27 @@
         <button id="course-next" class="arrow" aria-label="next course">▶</button>
       </div>
       <p class="fine" id="best-round"></p>
+      <div id="online-panel">
+        <div id="offline-only" class="buttons">
+          <button id="host-room" data-copy="online_host_room"></button>
+          <button id="host-code" data-copy="online_host_code"></button>
+        </div>
+        <div id="host-info" hidden>
+          <p><span class="label" data-copy="online_room_label"></span> <b id="room-show" class="room"></b> <span id="host-status"></span></p>
+          <p class="fine"><span data-copy="online_share"></span> <code id="room-link"></code></p>
+          <details id="invite-box">
+            <summary data-copy="online_invite_by_code"></summary>
+            <div class="buttons"><button id="new-invite" data-copy="online_new_invite"></button></div>
+            <textarea id="invite-out" rows="3" readonly></textarea>
+            <p class="hint" data-copy="online_paste_reply"></p>
+            <textarea id="reply-in" rows="3"></textarea>
+            <div class="buttons"><button id="accept-reply" data-copy="online_accept"></button></div>
+          </details>
+        </div>
+        <div id="joiner-info" hidden>
+          <p><span class="label" data-copy="online_room_label"></span> <b id="joiner-room" class="room"></b> · <span id="joiner-status"></span></p>
+        </div>
+      </div>
       <div class="buttons">
         <button id="setup-back" data-copy="back"></button>
         <button class="open-help" data-copy="how"></button>

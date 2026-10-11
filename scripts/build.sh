@@ -13,6 +13,12 @@ if [ "$HAVE" != "$PIN" ]; then
   exit 1
 fi
 
+# The vendored transport bundle must be the one pinned (web/net/vendor/README.md).
+(cd web/net/vendor && shasum -a 256 -c SHA256SUMS >/dev/null) || {
+  echo "web/net/vendor does not match SHA256SUMS" >&2
+  exit 1
+}
+
 cargo build --release --target wasm32-unknown-unknown -p rk_shim
 
 rm -rf dist
@@ -28,7 +34,7 @@ cp -R data dist/data
 # changed build is a different URL.
 sha256() { if command -v shasum >/dev/null; then shasum -a 256; else sha256sum; fi }
 BUILD=$(find dist -type f | LC_ALL=C sort | xargs cat | sha256 | cut -c1-8)
-for js in dist/*.js; do
+for js in dist/*.js dist/net/*.js; do
   perl -0777 -pi -e "s{from \"\./([A-Za-z0-9_/-]+\.js)\"}{from \"./\$1?v=$BUILD\"}g; s/__BUILD__/$BUILD/g" "$js"
 done
 perl -0777 -pi -e "s{new URL\('rk_shim_bg\.wasm', import\.meta\.url\)}{new URL('rk_shim_bg.wasm?v=$BUILD', import.meta.url)}g" dist/pkg/rk_shim.js
