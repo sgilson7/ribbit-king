@@ -24,6 +24,14 @@ pub struct Body {
     pub glide_pitch: i32,
     /// which mushrooms have gone off this shot (bits)
     pub popped: u32,
+    /// small bounces still to come when it next lands: one a fly
+    pub hops: i32,
+    /// in a whirlpool: ticks of spinning left, the whirlpool, the angle round it
+    pub spin: i32,
+    pub spin_at: (V3, i32),
+    pub spin_angle: i32,
+    /// ticks before a whirlpool can take it again
+    pub spin_rest: i32,
 }
 
 /// What a person (or the CPU) asks of a frog in the air this tick.
@@ -45,13 +53,21 @@ pub enum Event {
     Mushroom(usize),
     Car,
     Landed,
+    Bumper(usize),
+    Hop,
+    Whirl,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Outcome {
     Flying,
     Stopped,
+    /// lava: a stroke, and back where it was hit from
     Hazard(HazardKind),
+    /// in the water: it swims where it is, on a lily pad, at this level
+    Swim(i32),
+    /// an antlion has it: it stays in the pit
+    Grabbed(usize),
     Out,
     Lotus,
 }
@@ -69,6 +85,11 @@ impl Body {
             glide_yaw: 0,
             glide_pitch: 0,
             popped: 0,
+            hops: 0,
+            spin: 0,
+            spin_at: (V3::ZERO, 0),
+            spin_angle: 0,
+            spin_rest: 0,
         }
     }
 
@@ -80,6 +101,8 @@ impl Body {
         self.still = 0;
         self.ticks = 0;
         self.popped = 0;
+        self.hops = 0;
+        self.spin = 0;
     }
 
     pub fn give_wings(&mut self) {
@@ -113,6 +136,10 @@ impl Body {
             return Outcome::Stopped;
         }
         self.ticks += 1;
+        self.spin_rest = (self.spin_rest - 1).max(0);
+        if self.spin > 0 {
+            return self.whirl(events);
+        }
         if self.wings > 0 {
             self.glide(ctl);
         } else {
@@ -131,8 +158,25 @@ impl Body {
             let before = self.pos;
             self.pos = self.pos.add(v3(self.vel.x / n, self.vel.y / n, self.vel.z / n));
             self.collide(c, before, tick, events);
-            if let Some(k) = c.in_hazard(self.pos) {
-                return Outcome::Hazard(k);
+            if self.pos.y > c.top_water {
+                // above every water there is: nothing to look up
+            } else if let Some((k, level)) = c.in_hazard(self.pos) {
+                if k == HazardKind::Lava {
+                    return Outcome::Hazard(k);
+                }
+                if self.spin_rest == 0 {
+                    let inside = |(w, r): &&(V3, i32)| v3(self.pos.x - w.x, 0, self.pos.z - w.z).len() < *r;
+                    if let Some(&(centre, r)) = c.whirlpools.iter().find(inside) {
+                        self.spin = WHIRL_TICKS;
+                        self.spin_at = (centre, r);
+                        self.spin_angle = fx::atan2(self.pos.z - centre.z, self.pos.x - centre.x);
+                        self.wings = 0;
+                        events.push(Event::Whirl);
+                        return Outcome::Flying;
+                    }
+                }
+                self.pos.y = level + FROG_RADIUS / 3;
+                return Outcome::Swim(level);
             }
             if c.in_lotus(self.pos) {
                 return Outcome::Lotus;
@@ -140,6 +184,18 @@ impl Body {
         }
         if c.out_of_bounds(self.pos) {
             return Outcome::Out;
+        }
+        // an antlion takes a frog that rolls or lands near the bottom of its pit
+        for (i, (bottom, r)) in c.antlions.iter().enumerate() {
+            let flat = v3(self.pos.x - bottom.x, 0, self.pos.z - bottom.z).len();
+            // a frog whacked out of a pit is free until it falls back
+            let leaving = self.ticks < ANTLION_LEAVE && self.vel.y > 0;
+            if !leaving && flat < r * ANTLION_GRAB_PCT / 100 && self.pos.y < bottom.y + FROG_RADIUS * 4 {
+                self.pos = bottom.add(v3(0, FROG_RADIUS, 0));
+                self.vel = V3::ZERO;
+                self.moving = false;
+                return Outcome::Grabbed(i);
+            }
         }
         if self.grounded && !was_grounded && self.vel.y.abs() < REST_SPEED * 3 {
             events.push(Event::Landed);
@@ -159,6 +215,33 @@ impl Body {
             self.vel = V3::ZERO;
             self.wings = 0;
             return Outcome::Stopped;
+        }
+        Outcome::Flying
+    }
+
+    /// Round and round a whirlpool, drawn in toward its eye, then thrown out
+    /// along the way it was turning: somewhere new.
+    fn whirl(&mut self, events: &mut Vec<Event>) -> Outcome {
+        let (centre, r) = self.spin_at;
+        self.spin -= 1;
+        self.spin_angle = (self.spin_angle + WHIRL_TURN) & (fx::TURN - 1);
+        let k = ONE * self.spin / WHIRL_TICKS;
+        let radius = fx::mul(r, ONE / 4 + fx::mul(k, ONE * 6 / 10));
+        let (cx, sz) = (fx::cos(self.spin_angle), fx::sin(self.spin_angle));
+        self.pos = v3(
+            centre.x + fx::mul(cx, radius),
+            centre.y + FROG_RADIUS / 3,
+            centre.z + fx::mul(sz, radius),
+        );
+        if self.spin == 0 {
+            // the tangent, the way it was turning
+            let tangent = v3(-sz, 0, cx);
+            self.vel = tangent.scale(WHIRL_FLING).add(v3(0, WHIRL_UP, 0));
+            self.spin_rest = WHIRL_REST;
+            self.grounded = false;
+            events.push(Event::Bounce);
+        } else {
+            self.vel = V3::ZERO;
         }
         Outcome::Flying
     }
@@ -215,8 +298,12 @@ impl Body {
             if self.vel.y < 0 && before.y >= top - ONE / 8 && self.pos.y < top {
                 let d = v3(self.pos.x - b.at.x, 0, self.pos.z - b.at.z).len();
                 if d < b.r {
+                    // a bigger web throws harder
                     let (min, keep) = if b.web {
-                        (WEB_MIN, WEB_KEEP_PCT)
+                        (
+                            WEB_MIN + fx::mul(b.r - WEB_MEDIUM, WEB_PER_METRE).max(0),
+                            WEB_KEEP_PCT,
+                        )
                     } else {
                         (PAD_MIN, PAD_KEEP_PCT)
                     };
@@ -257,6 +344,34 @@ impl Body {
             if hard {
                 events.push(Event::Bounce);
             }
+            // a fly caught is a little hop on landing
+            if self.hops > 0 && self.vel.y < HOP_UP / 2 {
+                self.vel.y = HOP_UP;
+                self.hops -= 1;
+                events.push(Event::Hop);
+            }
+        }
+        // giant blue mushrooms: a pinball bumper's kick
+        for (i, b) in c.bumpers.iter().enumerate() {
+            if self.push_off_ball(b.cap, b.r, BUMPER_KEEP_PCT, BUMPER_SPEED) {
+                events.push(Event::Bumper(i));
+            }
+        }
+        // snails: their shells block a bounce
+        for i in 0..c.def.snails.len() {
+            let sn = c.def.snails[i];
+            let reach = sn.size + FROG_RADIUS;
+            if self.pos.x < sn.a.0.min(sn.b.0) - reach
+                || self.pos.x > sn.a.0.max(sn.b.0) + reach
+                || self.pos.z < sn.a.1.min(sn.b.1) - reach
+                || self.pos.z > sn.a.1.max(sn.b.1) + reach
+            {
+                continue;
+            }
+            let (at, _) = c.snail_at(i, tick);
+            if self.push_off_ball(at, c.def.snails[i].size / 2, WALL_BOUNCE_PCT, 0) {
+                events.push(Event::Wall);
+            }
         }
         // walls, logs, roofs
         for b in &c.boxes {
@@ -270,6 +385,28 @@ impl Body {
         if self.bumped_by_cars(c, tick, events) {
             self.grounded = false;
         }
+    }
+
+    /// Pushes the frog off a ball (a bumper's cap, a snail's shell), giving
+    /// back `keep_pct` of its speed into it, and at least `kick`. True on a hit.
+    fn push_off_ball(&mut self, centre: V3, r: i32, keep_pct: i32, kick: i32) -> bool {
+        let d = self.pos.sub(centre);
+        let reach = r + FROG_RADIUS;
+        if d.x.abs() > reach || d.y.abs() > reach || d.z.abs() > reach {
+            return false;
+        }
+        let len = d.len();
+        if len >= reach {
+            return false;
+        }
+        let n = if len == 0 { V3::UP } else { d.norm() };
+        self.pos = centre.add(n.scale(reach));
+        let vn = self.vel.dot(n);
+        let out = (-vn * keep_pct / 100).max(kick);
+        self.vel = self.vel.sub(n.scale(vn)).add(n.scale(out));
+        self.grounded = false;
+        self.wings = 0;
+        true
     }
 
     /// Pushes the ball out of a box; true on a hard knock.
@@ -300,6 +437,9 @@ impl Body {
     fn hit_column(&mut self, col: &crate::course::Column, events: &mut Vec<Event>) {
         let r = FROG_RADIUS;
         if self.pos.y < col.y0 || self.pos.y > col.y1 + r {
+            return;
+        }
+        if (self.pos.x - col.x).abs() > col.r + r || (self.pos.z - col.z).abs() > col.r + r {
             return;
         }
         let d = v3(self.pos.x - col.x, 0, self.pos.z - col.z);
@@ -401,7 +541,14 @@ mod tests {
         let mut h = parse_course(f.course, &pal).unwrap().remove(1);
         h.shapes.clear();
         h.rough = (0, ONE);
-        h.hazard = None;
+        h.waters.clear();
+        h.falls.clear();
+        h.tunnels.clear();
+        h.bumpers.clear();
+        h.antlions.clear();
+        h.snails.clear();
+        h.whirlpools.clear();
+        h.bubbles.clear();
         h.pads.clear();
         h.webs.clear();
         h.mushrooms.clear();
@@ -486,14 +633,153 @@ mod tests {
     }
 
     #[test]
-    fn a_frog_dropped_in_the_water_is_in_the_hazard() {
+    fn a_frog_dropped_in_the_water_swims_at_the_surface() {
         let c = course(0);
-        // the first pad sits on water; beside it, off the pad, is water
-        let pad = c.bouncers.iter().find(|b| !b.web).unwrap();
-        let mut b = Body::resting(pad.at.add(v3(pad.r + int(2), int(3), 0)));
+        // beside the lotus, in its pond
+        let at = c.lotus.add(v3(int(6), int(3), int(4)));
+        let mut b = Body::resting(at);
         b.launch(v3(0, -ONE / 10, 0));
         let (out, _) = fly(&c, &mut b, 300);
-        assert_eq!(out, Outcome::Hazard(HazardKind::Water));
+        assert_eq!(
+            out,
+            Outcome::Swim(c.lotus.y),
+            "the lotus floats on the pond's surface"
+        );
+        assert_eq!(b.pos.y, c.lotus.y + FROG_RADIUS / 3);
+    }
+
+    #[test]
+    fn lava_still_costs_a_stroke() {
+        let c = course(4);
+        let w = c
+            .def
+            .waters
+            .iter()
+            .find(|w| w.kind == HazardKind::Lava && matches!(w.region, crate::content::Region::Line { .. }))
+            .unwrap();
+        let crate::content::Region::Line { a, b: bb, .. } = w.region else {
+            unreachable!()
+        };
+        let mid = v3((a.0 + bb.0) / 2, w.level + int(3), (a.1 + bb.1) / 2);
+        let mut b = Body::resting(mid);
+        b.launch(v3(0, -ONE / 10, 0));
+        assert_eq!(fly(&c, &mut b, 300).0, Outcome::Hazard(HazardKind::Lava));
+    }
+
+    #[test]
+    fn a_giant_blue_mushroom_throws_a_frog_off_like_a_bumper() {
+        let c = course(2);
+        let m = c.bumpers[0];
+        // falling onto the cap from above, a little off centre
+        let mut b = Body::resting(m.cap.add(v3(int(1), m.r + int(4), 0)));
+        b.launch(v3(0, -ONE / 6, 0));
+        let mut ev = Vec::new();
+        for t in 0..60 {
+            b.step(&c, Control::default(), t, &mut ev);
+            if ev.iter().any(|e| matches!(e, Event::Bumper(_))) {
+                break;
+            }
+        }
+        assert!(ev.iter().any(|e| matches!(e, Event::Bumper(0))), "{ev:?}");
+        assert!(
+            b.vel.len() >= BUMPER_SPEED - ONE / 100,
+            "thrown at {}",
+            b.vel.len()
+        );
+        assert!(b.vel.y > 0, "up and away");
+    }
+
+    #[test]
+    fn an_antlion_grabs_a_frog_that_lands_in_its_pit() {
+        let c = course(1);
+        let (bottom, _) = c.antlions[0];
+        let mut b = Body::resting(bottom.add(v3(ONE / 2, int(6), 0)));
+        b.launch(v3(0, -ONE / 10, 0));
+        assert_eq!(fly(&c, &mut b, 300).0, Outcome::Grabbed(0));
+        assert!(!b.moving);
+    }
+
+    #[test]
+    fn a_whirlpool_spins_a_frog_round_and_throws_it_somewhere_new() {
+        let c = course(0);
+        let (centre, _) = c.whirlpools[0];
+        let mut b = Body::resting(centre.add(v3(int(2), int(4), 0)));
+        b.launch(v3(0, -ONE / 8, 0));
+        let mut ev = Vec::new();
+        let mut spun = 0;
+        let mut out = Outcome::Flying;
+        for t in 0..900 {
+            out = b.step(&c, Control::default(), t, &mut ev);
+            spun += (b.spin > 0) as i32;
+            if out != Outcome::Flying {
+                break;
+            }
+        }
+        assert!(ev.contains(&Event::Whirl));
+        assert!(spun >= WHIRL_TICKS - 2, "it spun for {spun} ticks");
+        assert!(
+            b.pos.dist(centre) > int(6),
+            "and was thrown clear: {}",
+            b.pos.dist(centre) / ONE
+        );
+        assert_ne!(out, Outcome::Flying);
+    }
+
+    #[test]
+    fn a_snail_s_shell_blocks_a_frog() {
+        let c = course(0);
+        let (shell, _) = c.snail_at(0, 0);
+        let size = c.def.snails[0].size;
+        let mut b = Body::resting(shell.add(v3(0, size / 2 + int(3), 0)));
+        b.launch(v3(0, -ONE / 8, 0));
+        let mut ev = Vec::new();
+        for t in 0..40 {
+            b.step(&c, Control::default(), t, &mut ev);
+        }
+        assert!(ev.contains(&Event::Wall), "{ev:?}");
+        assert!(
+            b.pos.dist(c.snail_at(0, 40).0) >= size / 2,
+            "not inside the shell"
+        );
+    }
+
+    #[test]
+    fn each_fly_is_one_small_hop_on_landing() {
+        let c = flat();
+        let hops = |n: i32| {
+            let mut b = Body::resting(c.tee.add(v3(0, FROG_RADIUS, 0)));
+            b.launch(launch_velocity(4_000, 0, deg(45)));
+            b.hops = n;
+            let (_, ev) = fly(&c, &mut b, FLIGHT_LIMIT);
+            ev.iter().filter(|e| **e == Event::Hop).count()
+        };
+        assert_eq!(hops(0), 0);
+        assert_eq!(hops(3), 3);
+        assert_eq!(hops(7), 7);
+    }
+
+    #[test]
+    fn a_bigger_web_throws_harder() {
+        let c = course(2);
+        let throw = |r_want: i32| {
+            let w = c
+                .bouncers
+                .iter()
+                .filter(|b| b.web)
+                .min_by_key(|b| (b.r - r_want).abs())
+                .unwrap();
+            let mut b = Body::resting(w.at.add(v3(0, int(3), 0)));
+            b.launch(v3(0, -ONE / 20, 0));
+            let mut ev = Vec::new();
+            for t in 0..120 {
+                b.step(&c, Control::default(), t, &mut ev);
+                if ev.iter().any(|e| matches!(e, Event::Web(_))) {
+                    return b.vel.y;
+                }
+            }
+            panic!("no web bounce");
+        };
+        assert!(throw(cm(900)) > throw(cm(400)) + mps(300));
     }
 
     #[test]
@@ -540,8 +826,8 @@ mod tests {
 
     #[test]
     fn a_wall_turns_a_frog_back() {
-        let c = course(2);
-        let b0 = c.boxes[0];
+        let c = course(3);
+        let b0 = c.buildings[0].0;
         // fly at the building's west face from the west
         let at = v3(b0.min.x - int(3), b0.min.y + int(3), (b0.min.z + b0.max.z) / 2);
         let mut b = Body::resting(at);

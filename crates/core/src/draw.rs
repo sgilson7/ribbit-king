@@ -82,10 +82,32 @@ pub fn scene(b: &mut Batch, v: &View) {
     for (k, bo) in c.bouncers.iter().enumerate() {
         let since = v.round.and_then(|r| r.bounced.get(k).copied()).unwrap_or(999);
         if bo.web {
-            web(b, pal, c, bo.at, bo.r, since);
+            web(b, pal, bo.at, bo.r, since);
         } else {
             pad(b, pal, bo.at, bo.r, since, k as i32);
         }
+    }
+    for (k, m) in c.bumpers.iter().enumerate() {
+        let since = v.round.and_then(|r| r.bumped.get(k).copied()).unwrap_or(999);
+        bumper(b, pal, m, since, t + k as i32 * 17);
+    }
+    let popped = active.map(|p| p.popped.clone()).unwrap_or_default();
+    for (k, bb) in c.bubbles.iter().enumerate() {
+        if !popped.get(k).copied().unwrap_or(false) {
+            bubble(b, pal, bb.at, bb.points, t + k as i32 * 29);
+        }
+    }
+    let tick = v.round.map(|r| r.tick).unwrap_or(t);
+    for i in 0..c.def.snails.len() {
+        let (p, yaw) = c.snail_at(i, tick);
+        snail(b, pal, p, yaw, c.def.snails[i].size, t + i as i32 * 11);
+    }
+    for (k, (bottom, r)) in c.antlions.iter().enumerate() {
+        let since = v.round.and_then(|r| r.bitten.get(k).copied()).unwrap_or(999);
+        antlion(b, pal, *bottom, *r, since, t + k as i32 * 7);
+    }
+    for (centre, r) in &c.whirlpools {
+        whirlpool(b, pal, *centre, *r, t);
     }
     for car in &c.cars {
         let (bx, vx) = c.car_box(car, v.round.map(|r| r.tick).unwrap_or(t));
@@ -109,9 +131,7 @@ pub fn scene(b: &mut Batch, v: &View) {
         );
     }
     if let Some(end) = v.guide.last() {
-        let y = c
-            .ground(end.x, end.z)
-            .max(c.def.hazard.map(|h| h.1).unwrap_or(i32::MIN));
+        let y = c.surface(end.x, end.z);
         let pulse = cm(150) + fx::mul(fx::sin(t * deg(6)), cm(25));
         b.push(
             Mesh::Ring,
@@ -157,6 +177,19 @@ fn round(b: &mut Batch, v: &View, r: &Round) {
             }
             continue;
         }
+        // a frog resting on the water floats on a lily pad
+        if !p.body.moving && c.surface(p.lie.x, p.lie.z) > c.ground(p.lie.x, p.lie.z) + cm(5) {
+            let spot = r.standing_spot(i);
+            let water = c.surface(spot.x, spot.z);
+            pad(
+                b,
+                pal,
+                v3(spot.x, water + cm(10), spot.z),
+                cm(170),
+                999,
+                i as i32 + 3,
+            );
+        }
         if i == r.active && at_tee {
             pose.pos = p.lie.add(v3(0, cm(30), 0));
             pose.yaw = r.yaw;
@@ -177,9 +210,7 @@ fn round(b: &mut Batch, v: &View, r: &Round) {
                 pose.wings = Some(t * deg(30));
             }
             // a shadow on the ground under a frog in the air
-            let g = c
-                .ground(p.body.pos.x, p.body.pos.z)
-                .max(c.def.hazard.map(|h| h.1).unwrap_or(i32::MIN));
+            let g = c.surface(p.body.pos.x, p.body.pos.z);
             let high = (p.body.pos.y - g).clamp(0, int(30));
             let w = cm(110) - fx::mul(high, ONE * 2 / 100);
             if high > cm(60) {
@@ -247,6 +278,15 @@ fn round(b: &mut Batch, v: &View, r: &Round) {
             0,
         );
     }
+}
+
+/// The top of the striker tower's bell beside a catapult, where a perfect
+/// hit's firework starts.
+pub fn bell_top(catapult: (V3, i32)) -> V3 {
+    let (base, yaw) = catapult;
+    base.add(right_of(yaw).scale(-cm(230)))
+        .add(v3(0, cm(500), 0))
+        .sub(facing(yaw, 0).scale(cm(60)))
 }
 
 /// The catapult: a plank on a fulcrum, the frog on its front end, a pad on
@@ -619,55 +659,311 @@ fn pad(b: &mut Batch, pal: &Palette, p: V3, r: i32, since: i32, k: i32) {
     }
 }
 
-fn web(b: &mut Batch, pal: &Palette, c: &Course, p: V3, r: i32, since: i32) {
-    let sag = if since < 24 {
-        fx::mul(fx::sin(since * deg(8)), cm(45))
+/// A web strung flat across a pit in the ground. A frog that lands on it
+/// drives it down into a deep funnel, after the web over the pit in the Deku
+/// Tree: the threads stretch to the frog, the rings sink after it, then it
+/// all springs back up past flat and settles.
+fn web(b: &mut Batch, pal: &Palette, p: V3, r: i32, since: i32) {
+    const SPOKES: i32 = 12;
+    const RINGS: i32 = 4;
+    // the funnel's depth at its middle: down fast, up past flat, settling
+    let sag = if since < 54 {
+        let decay = ONE * (54 - since) / 54;
+        fx::mul(fx::mul(fx::sin(since * deg(11)), r * 45 / 100), decay)
     } else {
         0
     };
-    let o = p.sub(v3(0, sag, 0));
-    // four posts
-    for k in 0..4 {
-        let a = deg(45) + deg(90) * k;
-        let foot = p.add(facing(a, 0).scale(r + cm(30)));
-        let g = c.ground(foot.x, foot.z);
-        b.inked(
-            Mesh::Cyl,
-            &rod(v3(foot.x, g, foot.z), v3(foot.x, p.y + cm(40), foot.z), cm(20)),
-            pal.c("web_post"),
+    let wobble = |k: i32| {
+        if since < 54 {
+            fx::mul(fx::sin(since * deg(23) + k * deg(70)), cm(12))
+        } else {
+            0
+        }
+    };
+    // the pit's dark floor
+    b.push(
+        Mesh::Cyl,
+        &at(p.sub(v3(0, cm(250), 0)), 0, v3(r * 2, cm(10), r * 2)),
+        pal.c("pit"),
+        0,
+        PASS_SOLID,
+    );
+    let point = |k: i32, ring: i32| {
+        let rr = r * ring / RINGS;
+        let depth = fx::mul(sag, ONE - fx::div(rr, r));
+        p.add(facing(deg(360) * k / SPOKES, 0).scale(rr)).sub(v3(
             0,
-        );
+            depth + wobble(k + ring) * (RINGS - ring) / RINGS,
+            0,
+        ))
+    };
+    let silk = pal.c("web");
+    for k in 0..SPOKES {
+        for ring in 0..RINGS {
+            b.push(
+                Mesh::Cyl,
+                &rod(point(k, ring), point(k, ring + 1), cm(5)),
+                silk,
+                ONE / 3,
+                PASS_SOLID,
+            );
+        }
+        for ring in 1..=RINGS {
+            b.push(
+                Mesh::Cyl,
+                &rod(point(k, ring), point(k + 1, ring), cm(4)),
+                silk,
+                ONE / 3,
+                PASS_SOLID,
+            );
+        }
+        // a peg of silk where each spoke holds the ground
         b.push(
-            Mesh::Cyl,
-            &rod(
-                v3(foot.x, p.y + cm(10), foot.z),
-                o.add(facing(a, 0).scale(r)),
-                cm(4),
+            Mesh::Sphere,
+            &at(point(k, RINGS), 0, v3(cm(22), cm(14), cm(22))),
+            silk,
+            ONE / 4,
+            PASS_SOLID,
+        );
+    }
+}
+
+/// A giant blue mushroom: a pinball bumper. It squashes and lights up when
+/// it throws a frog.
+fn bumper(b: &mut Batch, pal: &Palette, m: &crate::course::Bumper, since: i32, t: i32) {
+    let hit = if since < 24 { ONE * (24 - since) / 24 } else { 0 };
+    let squash = ONE - fx::mul(fx::mul(fx::sin(since.min(24) * deg(15)), ONE / 4), hit);
+    let breathe = fx::mul(fx::sin(t * deg(2)), ONE / 60);
+    let r = m.r;
+    let stem_h = m.cap.y - m.stem;
+    put(
+        b,
+        Mesh::Cyl,
+        &at(
+            v3(m.cap.x, m.stem + stem_h / 2, m.cap.z),
+            0,
+            v3(r * 7 / 10, stem_h, r * 7 / 10),
+        ),
+        pal.c("bumper_stem"),
+        true,
+    );
+    put(
+        b,
+        Mesh::Cyl,
+        &at(
+            v3(m.cap.x, m.cap.y - r * 2 / 5, m.cap.z),
+            0,
+            v3(r * 17 / 10, r / 8, r * 17 / 10),
+        ),
+        pal.c("bumper_gill"),
+        true,
+    );
+    let centre = m.cap.add(v3(0, r / 4, 0));
+    let size = v3(
+        fx::mul(r * 2, ONE + breathe + (ONE - squash) / 2),
+        fx::mul(r * 3 / 2, squash),
+        fx::mul(r * 2, ONE + breathe + (ONE - squash) / 2),
+    );
+    b.inked(
+        Mesh::Sphere,
+        &at(centre, 0, size),
+        pal.c("bumper_cap"),
+        hit * 7 / 10,
+    );
+    for k in 0..9 {
+        let a = deg(40) * k + deg(13);
+        let up = if k % 3 == 0 { deg(55) } else { deg(25) };
+        let d = v3(
+            fx::mul(fx::sin(a), fx::cos(up)),
+            fx::sin(up),
+            fx::mul(fx::cos(a), fx::cos(up)),
+        );
+        let spot = centre.add(v3(
+            fx::mul(d.x, size.x / 2),
+            fx::mul(d.y, size.y / 2),
+            fx::mul(d.z, size.z / 2),
+        ));
+        let w = r / 3 + (k % 2) * r / 8;
+        b.push(
+            Mesh::Sphere,
+            &at(spot, a, v3(w, w * 2 / 3, w)),
+            pal.c("bumper_spot"),
+            hit / 2,
+            PASS_SOLID,
+        );
+    }
+}
+
+/// A point bubble: bigger for more points, a star inside, bobbing.
+fn bubble(b: &mut Batch, pal: &Palette, at_: V3, points: i32, t: i32) {
+    let size = cm(130) + cm(15) * (points / 10).min(10);
+    let o = at_.add(v3(0, fx::mul(fx::sin(t * deg(3)), cm(20)), 0));
+    b.glow(
+        Mesh::Sphere,
+        &at(o, 0, v3(size, size, size)),
+        pal.c("bubble"),
+        ONE * 9 / 10,
+    );
+    // two crossed hoops for the bubble's rim, turning, so it reads as a ball
+    for k in 0..2 {
+        let hoop = tilted(
+            o,
+            t * deg(2) + k * fx::QUARTER,
+            fx::QUARTER,
+            v3(size, cm(6), size),
+        );
+        b.push(Mesh::Ring, &hoop, pal.c("bubble"), ONE / 2, PASS_SOLID);
+    }
+    b.push(
+        Mesh::Sphere,
+        &at(
+            o.add(v3(-size / 5, size / 5, size / 5)),
+            0,
+            v3(size / 5, size / 5, size / 5),
+        ),
+        pal.c("white"),
+        ONE,
+        PASS_SOLID,
+    );
+    let star = if points >= 50 {
+        pal.c("crown")
+    } else {
+        pal.c("bubble_star")
+    };
+    b.inked(
+        Mesh::Octa,
+        &at(o, t * deg(4), v3(size * 2 / 5, size * 2 / 5, size * 2 / 5)),
+        star,
+        ONE * 7 / 10,
+    );
+}
+
+/// A snail with a spiral shell, creeping along its line.
+fn snail(b: &mut Batch, pal: &Palette, at_: V3, yaw: i32, size: i32, t: i32) {
+    let f = facing(yaw, 0);
+    let shell = at_.add(v3(0, size / 10, 0));
+    put(
+        b,
+        Mesh::Sphere,
+        &at(shell, yaw, v3(size * 8 / 10, size, size)),
+        pal.c("snail_shell"),
+        true,
+    );
+    for (k, s) in [(0, 85), (1, 60), (2, 35)] {
+        let off = crate::geom::right_of(yaw).scale(size * (40 + k * 4) / 100);
+        put(
+            b,
+            Mesh::Ring,
+            &tilted(
+                shell.add(off),
+                yaw + fx::QUARTER,
+                fx::QUARTER,
+                v3(size * s / 100, cm(6), size * s / 100),
             ),
-            pal.c("web"),
-            ONE / 3,
-            PASS_SOLID,
+            pal.c("snail_shell_dark"),
+            false,
         );
     }
-    for k in 0..8 {
-        let a = deg(45) * k;
-        b.push(
-            Mesh::Cyl,
-            &rod(o, o.add(facing(a, 0).scale(r)), cm(4)),
-            pal.c("web"),
-            ONE / 3,
-            PASS_SOLID,
+    let creep = fx::mul(fx::sin(t * deg(6)), size / 20);
+    let body = at_
+        .sub(v3(0, size * 4 / 10, 0))
+        .add(f.scale(size * 35 / 100 + creep));
+    put(
+        b,
+        Mesh::Sphere,
+        &at(body, yaw, v3(size * 45 / 100, size * 22 / 100, size * 13 / 10)),
+        pal.c("snail_body"),
+        true,
+    );
+    let head = at_.sub(v3(0, size / 5, 0)).add(f.scale(size * 85 / 100 + creep));
+    put(
+        b,
+        Mesh::Sphere,
+        &at(head, yaw, v3(size * 3 / 10, size * 3 / 10, size * 3 / 10)),
+        pal.c("snail_body"),
+        true,
+    );
+    for side in [-1, 1] {
+        let base = head.add(crate::geom::right_of(yaw).scale(side * size / 10));
+        let tip = base
+            .add(v3(0, size * 35 / 100, 0))
+            .add(f.scale(size / 8))
+            .add(crate::geom::right_of(yaw).scale(side * size / 10));
+        b.inked(Mesh::Cyl, &rod(base, tip, size / 18), pal.c("snail_body"), 0);
+        put(
+            b,
+            Mesh::Sphere,
+            &at(tip, 0, v3(size / 9, size / 9, size / 9)),
+            pal.c("pupil"),
+            false,
         );
     }
-    for ring in 1..=3 {
-        let rr = r * ring / 3;
+}
+
+/// An antlion's jaws at the bottom of its pit: open and waiting, snapping
+/// shut on a frog.
+fn antlion(b: &mut Batch, pal: &Palette, bottom: V3, r: i32, since: i32, t: i32) {
+    let open = if since < 40 {
+        fx::mul(deg(10), ONE * since / 40)
+    } else {
+        deg(28) + fx::mul(fx::sin(t * deg(3)), deg(6))
+    };
+    put(
+        b,
+        Mesh::Sphere,
+        &at(bottom.sub(v3(0, cm(20), 0)), 0, v3(cm(150), cm(70), cm(130))),
+        pal.c("antlion"),
+        true,
+    );
+    for side in [-1, 1] {
+        let yaw = side * (deg(90) - open);
+        let root = bottom.add(v3(side * cm(40), cm(20), 0));
+        let jaw = Affine::translate(root)
+            .then(&Affine::rot_y(yaw))
+            .then(&Affine::rot_x(-deg(70)))
+            .then(&Affine::translate(v3(0, cm(70), 0)))
+            .then(&Affine::scale(v3(cm(22), cm(150), cm(22))));
+        b.inked(Mesh::Cone, &jaw, pal.c("antlion_jaw"), 0);
+    }
+    // the funnel's rim, a ring of disturbed sand
+    put(
+        b,
+        Mesh::Ring,
+        &at(bottom.add(v3(0, cm(240), 0)), 0, v3(r * 2, cm(10), r * 2)),
+        pal.c("sand_dark"),
+        false,
+    );
+}
+
+/// A whirlpool: rings and spiral arms turning on the water.
+fn whirlpool(b: &mut Batch, pal: &Palette, centre: V3, r: i32, t: i32) {
+    for k in 1..=3 {
+        let rr = r * k / 3;
         b.push(
             Mesh::Ring,
-            &at(o, 0, v3(rr * 2, cm(4), rr * 2)),
-            pal.c("web"),
+            &at(
+                centre.add(v3(0, cm(4) - k * cm(2), 0)),
+                t * deg(3) * (4 - k),
+                v3(rr * 2, cm(8), rr * 2),
+            ),
+            pal.c("whirl"),
             ONE / 3,
             PASS_SOLID,
         );
+    }
+    for arm in 0..4 {
+        for step in 0..6 {
+            let a = deg(90) * arm + step * deg(35) + t * deg(6);
+            let rr = r * (step + 1) / 7;
+            let p = centre.add(facing(a, 0).scale(rr)).add(v3(0, cm(6), 0));
+            b.push(
+                Mesh::Blob,
+                &at(p, a, v3(cm(60), cm(10), cm(130))),
+                pal.c("splash"),
+                ONE / 3,
+                PASS_SOLID,
+            );
+        }
     }
 }
 

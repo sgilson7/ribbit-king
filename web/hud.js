@@ -28,7 +28,10 @@ export function makeHud(copy, play) {
       const n = document.createElement("span");
       n.className = "n";
       n.textContent = `${p.strokes}${p.holed ? " ✿" : ""}`;
-      li.append(dot, name, n);
+      const pts = document.createElement("span");
+      pts.className = "pts";
+      pts.textContent = fill(copy.points, { n: p.points });
+      li.append(dot, name, n, pts);
       list.append(li);
     }
   }
@@ -56,8 +59,8 @@ export function makeHud(copy, play) {
     const words = copy.says[say.key];
     if (!words) return;
     const t = document.createElement("div");
-    t.className = say.key === "turn" || say.key === "landed" ? "toast small" : "toast";
-    t.textContent = fill(words, { who: say.who });
+    t.className = say.key === "turn" || say.key === "landed" ? "toast small" : say.key === "points" ? "toast points" : "toast";
+    t.textContent = fill(words, { who: say.who, n: say.n });
     t.addEventListener("animationend", () => t.remove());
     el("toasts").append(t);
   }
@@ -83,6 +86,7 @@ export function makeHud(copy, play) {
       el("p-name").style.color = p.colour;
       el("p-stroke").textContent = fill(copy.stroke, { n: p.strokes });
       el("p-flies").textContent = p.tongue ? p.flies : fill(copy.tongue_need, { n: p.flies });
+      el("p-points").textContent = fill(copy.points, { n: p.points });
       el("g-tongue").hidden = !p.tongue;
       el("g-jumps").hidden = !p.jumps;
       el("p-jumps").textContent = `${copy.jumps} × ${p.jumps}`;

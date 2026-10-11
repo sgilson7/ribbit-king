@@ -8,7 +8,7 @@ use crate::content::{HazardKind, HoleDef, ItemKind, Palette, Rgb, Theme};
 use crate::fx::{self, ONE};
 use crate::geom::{v3, V3};
 use crate::rng::Rng;
-use crate::terrain::{seed_of, seg_dist, Terrain};
+use crate::terrain::{rest_height, seed_of, seg_dist, water_at, Terrain};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Aabb {
@@ -43,6 +43,30 @@ pub struct Car {
     pub colour: Rgb,
 }
 
+/// A giant blue mushroom: its stem is a column, its cap a ball that throws
+/// a frog away like a pinball bumper.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bumper {
+    pub cap: V3,
+    pub r: i32,
+    pub stem: i32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bubble {
+    pub at: V3,
+    pub points: i32,
+}
+
+/// A tunnel's roof, for drawing; its box is also among the course's boxes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Roof {
+    pub min: V3,
+    pub max: V3,
+    /// the cut's floor under it
+    pub floor: i32,
+}
+
 /// A car's size: length (along its lane), height, width.
 pub const CAR_SIZE: V3 = v3(cm(430), cm(150), cm(200));
 
@@ -69,11 +93,20 @@ pub struct Course {
     pub items: Vec<(ItemKind, V3)>,
     pub flies: Vec<V3>,
     pub cars: Vec<Car>,
+    pub bumpers: Vec<Bumper>,
+    pub bubbles: Vec<Bubble>,
+    pub roofs: Vec<Roof>,
+    /// antlion pits: the bottom, and the radius
+    pub antlions: Vec<(V3, i32)>,
+    /// whirlpools: the centre on the water, and the radius
+    pub whirlpools: Vec<(V3, i32)>,
     pub placed: Vec<Placed>,
     /// the hole's buildings, with the wall colour each is drawn in
     pub buildings: Vec<(Aabb, Rgb)>,
     /// the outside ground's height
     pub backdrop: i32,
+    /// a little above the highest water: nothing above it can be in any
+    pub top_water: i32,
 }
 
 impl Course {
@@ -84,9 +117,9 @@ impl Course {
         // the surface at a point: water's top where the ground is under it
         let surface = |x: i32, z: i32| {
             let g = ground(x, z);
-            match def.hazard {
-                Some((_, l)) if g < l => l,
-                _ => g,
+            match water_at(def, x, z, g) {
+                Some(w) => w.level,
+                None => g,
             }
         };
         let tee = v3(def.tee.0, ground(def.tee.0, def.tee.1), def.tee.1);
@@ -102,13 +135,41 @@ impl Course {
             });
         }
         for w in &def.webs {
+            // flush with the ground round its pit
             bouncers.push(Bouncer {
-                at: v3(w.x, surface(w.x, w.z) + w.height, w.z),
+                at: v3(w.x, rest_height(def, w.x, w.z) - cm(25), w.z),
                 r: w.r,
                 web: true,
-                kick: w.kick,
+                kick: (0, 0),
             });
         }
+        let bumpers: Vec<Bumper> = def
+            .bumpers
+            .iter()
+            .map(|&[x, z, r, h]| Bumper {
+                cap: v3(x, ground(x, z) + h, z),
+                r,
+                stem: ground(x, z),
+            })
+            .collect();
+        let bubbles = def
+            .bubbles
+            .iter()
+            .map(|&[x, z, h, points]| Bubble {
+                at: v3(x, surface(x, z) + h, z),
+                points,
+            })
+            .collect();
+        let antlions = def
+            .antlions
+            .iter()
+            .map(|&[x, z, r]| (v3(x, ground(x, z), z), r))
+            .collect();
+        let whirlpools = def
+            .whirlpools
+            .iter()
+            .map(|&[x, z, r]| (v3(x, surface(x, z), z), r))
+            .collect();
         let mushrooms = def
             .mushrooms
             .iter()
@@ -154,9 +215,15 @@ impl Course {
             items,
             flies,
             cars,
+            bumpers,
+            bubbles,
+            roofs: Vec::new(),
+            antlions,
+            whirlpools,
             placed: Vec::new(),
             buildings: Vec::new(),
             backdrop: def.base - cm(5),
+            top_water: def.waters.iter().map(|w| w.level).max().unwrap_or(i32::MIN / 2) + cm(20),
             terrain,
         };
         for (k, b) in def.buildings.iter().enumerate() {
@@ -174,6 +241,29 @@ impl Course {
                 walls[k % walls.len()]
             };
             c.buildings.push((bx, wall));
+        }
+        for b in c.bumpers.clone() {
+            c.columns.push(Column {
+                x: b.cap.x,
+                z: b.cap.z,
+                r: b.r / 4,
+                y0: b.stem - ONE,
+                y1: b.cap.y - b.r / 3,
+            });
+        }
+        for t in &def.tunnels {
+            let floor = def.base;
+            let y0 = floor + t.clearance;
+            let roof = Aabb {
+                min: v3(t.x - t.w / 2 - cm(150), y0, t.z0),
+                max: v3(t.x + t.w / 2 + cm(150), y0 + t.thickness, t.z1),
+            };
+            c.boxes.push(roof);
+            c.roofs.push(Roof {
+                min: roof.min,
+                max: roof.max,
+                floor,
+            });
         }
         for p in &def.props {
             c.place(&p.kind, p.x, p.z, p.size, p.yaw);
@@ -217,14 +307,42 @@ impl Course {
         self.terrain.height(x, z)
     }
 
-    /// Is a point over the hazard (water or lava), below its top?
-    pub fn in_hazard(&self, p: V3) -> Option<HazardKind> {
-        let (kind, level) = self.def.hazard?;
-        if p.y < level + cm(10) && self.ground(p.x, p.z) < level {
-            Some(kind)
+    /// The water (or lava) a point is in, below its top, and its level.
+    pub fn in_hazard(&self, p: V3) -> Option<(HazardKind, i32)> {
+        let w = water_at(&self.def, p.x, p.z, self.ground(p.x, p.z))?;
+        if p.y < w.level + cm(10) {
+            Some((w.kind, w.level))
         } else {
             None
         }
+    }
+
+    /// The surface under a point: water's top over water, else the ground.
+    pub fn surface(&self, x: i32, z: i32) -> i32 {
+        let g = self.ground(x, z);
+        match water_at(&self.def, x, z, g) {
+            Some(w) => w.level,
+            None => g,
+        }
+    }
+
+    /// Where a snail is at a tick, and which way it faces: to and fro along
+    /// its line at its speed.
+    pub fn snail_at(&self, i: usize, tick: i32) -> (V3, i32) {
+        let s = self.def.snails[i];
+        let d = v3(s.b.0 - s.a.0, 0, s.b.1 - s.a.1);
+        let len = d.len().max(ONE);
+        let travelled = (s.speed as i64 * tick as i64).rem_euclid(2 * len as i64) as i32;
+        let (along, back) = if travelled <= len {
+            (travelled, false)
+        } else {
+            (2 * len - travelled, true)
+        };
+        let t = fx::div(along, len);
+        let x = fx::lerp(s.a.0, s.b.0, t);
+        let z = fx::lerp(s.a.1, s.b.1, t);
+        let yaw = crate::geom::yaw_pitch_of(if back { d.neg() } else { d }).0;
+        (v3(x, self.surface(x, z) + s.size / 2, z), yaw)
     }
 
     pub fn out_of_bounds(&self, p: V3) -> bool {
@@ -281,6 +399,9 @@ impl Course {
             "basalt" => column(s(130), s(260)),
             "vent" => column(s(150), s(120)),
             "hydrant" => column(s(30), s(80)),
+            "shelf_tree" => column(s(55), s(900)),
+            "fungus_tree" => column(s(80), s(1200)),
+            "puffball" => column(s(60), s(100)),
             "planter" => column(s(110), s(70)),
             "log" => {
                 let (l, r) = (s(250), s(45));
@@ -357,10 +478,21 @@ impl Course {
     /// Somewhere a scattered prop will not block play: dry, off the
     /// fairways and paths, away from the tee, the lotus, pads and webs.
     fn clear_for_scenery(&self, x: i32, z: i32) -> bool {
-        if let Some((_, l)) = self.def.hazard {
-            if self.ground(x, z) < l + cm(40) {
-                return false;
-            }
+        if water_at(&self.def, x, z, self.ground(x, z) - cm(40)).is_some() {
+            return false;
+        }
+        if self.roofs.iter().any(|r| {
+            x > r.min.x - cm(800) && x < r.max.x + cm(800) && z > r.min.z - cm(3500) && z < r.max.z + cm(3500)
+        }) {
+            return false;
+        }
+        let p0 = v3(x, 0, z);
+        let near = |q: V3, d: i32| v3(q.x - p0.x, 0, q.z - p0.z).len() < d;
+        if self.bumpers.iter().any(|b| near(b.cap, b.r + cm(300)))
+            || self.antlions.iter().any(|(a, r)| near(*a, *r + cm(300)))
+            || self.bubbles.iter().any(|b| near(b.at, cm(250)))
+        {
+            return false;
         }
         let p = v3(x, 0, z);
         let far = |q: V3, d: i32| v3(q.x - p.x, 0, q.z - p.z).len() > d;

@@ -7,7 +7,9 @@ list). The structure follows LongTimeComin/tools/art.py.
 Each picture is composed from sub-pictures defined once below (a frog
 sitting, a frog leaping, the fly, the lotus, a lily pad, a spider web, a
 mushroom, the catapult and its mallet, a cloud, a cypress, a saguaro, a
-palm, a building with its rooftop clutter, a car, a fountain, a volcano)
+palm, a building with its rooftop clutter, a car, a fountain, a volcano,
+the point bubble, the blue bumper mushroom, a shelf fungus, a glowing
+toadstool, a puffball, a web stretched flat over a pit, a waterfall)
 and placed by the picture's own function. The look follows
 vagrancy/Sam_Comm_final.png and the title screens of Sam's other games: a
 warm sky with outlined puffy clouds, salmon, coral and pink, sage and teal,
@@ -17,6 +19,7 @@ of small clutter.
     python3 tools/art.py            # every picture: web/art/**.png, tools/art/**.tex
     python3 tools/art.py title      # one picture
     python3 tools/art.py frogs      # one folder
+    python3 tools/art.py fungus     # one picture by its file name
 
 Facts each picture must get right (the things an image generator gets
 wrong), and where this file enforces each:
@@ -42,10 +45,31 @@ wrong), and where this file enforces each:
   the `inked` style (draw=ink, round joins and caps). The exceptions are
   light, not shapes: glints, cheek blush, shading and glows, which are
   unoutlined and translucent.
+- the explosive mushroom is always red (#E23B2E) with pale spots and a
+  cream stem, the same in the icon and in every course's undergrowth:
+  every one is drawn by `mushroom`, the only place it is defined.
+- the pinball bumper is always a giant blue mushroom: a big domed cap in
+  cobalt #4A8FE7 lit sky blue #8FC4FF along its top, pale spots, cream
+  gills, a cream stem with a frill. Every bumper (Toadstool Hollow's and
+  `icons/bumper`) is drawn by `blue_mushroom`, the only place it is
+  defined. Bumpers tower over frogs: `fungus` asserts every bumper is at
+  least twice the height of the frog sitting in the picture (BUMPER_H and
+  FROG_H), and the build stops if one is not.
+- the point bubble is always the same bubble: a translucent soap bubble
+  with a rainbow sheen, a white glint and a small gold star inside. Every
+  bubble (in every hole and `icons/bubble`) is drawn by `bubble`, the
+  only place a bubble is defined; it is drawn last in each hole, so no
+  scenery covers one.
+- the web in Toadstool Hollow lies flat in the ground over a pit, a
+  trampoline, not hung upright: `ground_web` draws the pit and squashes
+  the same `web` vertically (yscale 0.34) with no spider.
+- the boing on `icons/bumper` is arcs only: ink arcs echoing the cap, no
+  letters (and `check_no_text` still guards the source).
 - the left third of the hole postcards and the crown, and the lower-left
   third of the title, stay calm (plain sky, water or ground): the page's
   text panel sits there. Each picture's function keeps its clutter at
-  x > 11 (or above y = 8 on the title).
+  x > 11 (or above y = 8 on the title); Toadstool Hollow's canopy, trunks
+  and light shafts also start right of x = 11.
 - repeatable: every random choice comes from a seeded random.Random, so
   running the script twice draws identical pictures.
 """
@@ -94,6 +118,16 @@ COLOURS = {
     "smoke": "9C8494", "smokedark": "7E6878",
     "basalt": "4A3A4A", "basaltdark": "352838", "basalttop": "6E5868", "rockface": "5E4A5C",
     "lava": "FF6A1A", "lavagold": "FFB000", "lavadark": "C9481A", "pool": "5FB8B0", "poollight": "9FE0D6",
+    # Toadstool Hollow: a dusky violet-teal sky, moss, the blue bumpers,
+    # shelf fungi, glowing toadstools, puffballs, a violet-grey cliff
+    "fungskyhi": "C9B6E4", "fungsky": "DAC7EC", "fungskylow": "EBD9F2", "fungcloud": "F5ECF9",
+    "fungmoss": "8FB97E", "fungmossdark": "6F9E72", "fungmosslight": "B2D199", "farbark": "A58BAE",
+    "bumper": "4A8FE7", "bumperlight": "8FC4FF", "bumperspot": "E6F2FF", "gill": "EADBC0",
+    "shelf": "E8B07A", "shelfdark": "C98C4E", "glowteal": "4FD6C4", "glowtealhi": "A8F2E6",
+    "glowviolet": "A77FE8", "glowviolethi": "D9C4FF", "puff": "F3EAD8", "puffdark": "D9C9A8",
+    "cliff": "9C8AA8", "cliffdark": "7E6C8C", "foam": "F4FBFA",
+    # the point bubble
+    "bubble": "D4F6F8", "bubbleteal": "7FE0D8", "bubbleviolet": "C9A8F0", "bubblepink": "F7B8D8",
     # crown
     "crown": "FFC23A", "crowndark": "E09A1A", "jewel": "E0483E", "jewelb": "4FA3A0",
 }
@@ -1222,6 +1256,166 @@ def tumbleweed(x, y, r, rng):
     return out
 
 
+# ---- the point bubble, the bumper, and Toadstool Hollow's things -----------
+
+def star(x, y, r, fill="gold"):
+    """A five-pointed star, point up, with a lighter centre."""
+    ring = []
+    for k in range(10):
+        rr = r if k % 2 == 0 else r * 0.45
+        a = math.pi / 2 + k * math.pi / 5
+        ring.append((x + math.cos(a) * rr, y + math.sin(a) * rr))
+    out = poly(ring, fill)
+    out += f"\\fill[goldlight] {P(x, y)} circle ({f(r * 0.22)});\n"
+    out += f"\\fill[white, opacity=0.6] {P(x - r * 0.18, y + r * 0.3)} circle ({f(r * 0.1)});\n"
+    return out
+
+
+def bubble(x, y, r):
+    """The point bubble: a translucent soap bubble, a rainbow sheen along its
+    inside edge, a white glint, and a small gold star inside. Every bubble
+    in every picture is drawn here; nothing else draws one."""
+    lw = r * 0.11 * PT_PER_CM
+    out = f"\\fill[bubble, opacity=0.38] {P(x, y)} circle ({f(r)});\n"
+    for col, rr, a0, a1 in (("bubbleviolet", 0.84, -110, -20), ("bubbleteal", 0.84, -20, 40), ("bubblepink", 0.84, 185, 230)):
+        out += f"\\draw[{col}, opacity=0.8, line width={f(lw)}pt, line cap=round] ([shift={{({f(a0)}:{f(r * rr)})}}]{f(x)},{f(y)}) arc[start angle={f(a0)}, end angle={f(a1)}, radius={f(r * rr)}];\n"
+    out += star(x, y - r * 0.04, r * 0.42)
+    out += f"\\draw[white, opacity=0.95, line width={f(lw * 1.15)}pt, line cap=round] ([shift={{(112:{f(r * 0.7)})}}]{f(x)},{f(y)}) arc[start angle=112, end angle=168, radius={f(r * 0.7)}];\n"
+    out += glint(x + math.cos(math.radians(92)) * r * 0.7, y + math.sin(math.radians(92)) * r * 0.7, r * 0.07, 0.95)
+    out += f"\\draw[inked] {P(x, y)} circle ({f(r)});\n"
+    return out
+
+
+BUMPER_H = 4.85  # a bumper's height at s = 1, foot to the top of its cap
+FROG_H = 4.02    # a sitting frog's height at s = 1, seat to the top of its eyes
+
+
+def blue_mushroom(x, y, s, face=True):
+    """The pinball bumper: a giant blue mushroom with a big domed cobalt
+    cap (#4A8FE7) lit sky blue (#8FC4FF) along its top, pale spots, cream
+    gills and a cream stem with a frill. Foot at (x, y); about 4.2 s wide
+    and BUMPER_H s tall. Every bumper is drawn here; nothing else draws one."""
+    def Q(dx, dy):
+        return P(x + dx * s, y + dy * s)
+    out = f"\\fill[ink, opacity=0.14] {Q(0, 0)} ellipse ({f(1.2 * s)} and {f(0.22 * s)});\n"
+    stem = f"{Q(-0.62, 0)} .. controls {Q(-0.34, 0.5)} and {Q(-0.44, 2.0)} .. {Q(-0.38, 3.0)} -- {Q(0.38, 3.0)} .. controls {Q(0.44, 2.0)} and {Q(0.34, 0.5)} .. {Q(0.62, 0)} -- cycle"
+    out += f"\\fill[stem] {stem};\n"
+    out += f"\\fill[stonedark, opacity=0.3] {Q(0.18, 0.05)} .. controls {Q(0.32, 1.0)} and {Q(0.3, 2.0)} .. {Q(0.26, 2.9)} -- {Q(0.4, 2.9)} .. controls {Q(0.44, 2.0)} and {Q(0.34, 0.5)} .. {Q(0.6, 0.05)} -- cycle;\n"
+    out += f"\\draw[inked] {stem};\n"
+    if face:
+        for side in (-1, 1):
+            out += f"\\fill[ink] {Q(side * 0.13, 1.05)} circle ({f(0.055 * s)});\n"
+        out += f"\\fill[blush, opacity=0.5] {Q(-0.28, 0.85)} ellipse ({f(0.1 * s)} and {f(0.055 * s)});\n"
+        out += f"\\fill[blush, opacity=0.5] {Q(0.28, 0.85)} ellipse ({f(0.1 * s)} and {f(0.055 * s)});\n"
+    # the frill round the stem
+    out += f"\\filldraw[inked,fill=stem] {Q(-0.42, 2.5)} -- {Q(0.42, 2.5)} .. controls {Q(0.6, 2.3)} .. {Q(0.66, 2.05)} .. controls {Q(0.3, 1.9)} and {Q(-0.3, 1.9)} .. {Q(-0.66, 2.05)} .. controls {Q(-0.6, 2.3)} .. cycle;\n"
+    # gills under the cap
+    out += ellipse(x, y + 3.02 * s, 1.85 * s, 0.4 * s, "gill")
+    for k in range(9):
+        a = math.radians(198 + k * 18)
+        out += f"\\draw[stonedark, line width=0.7pt] {Q(0, 3.08)} -- {Q(math.cos(a) * 1.7, 3.04 + math.sin(a) * 0.34)};\n"
+    out += ellipse(x, y + 3.0 * s, 0.4 * s, 0.1 * s, "stem", extra=",line width=0.7pt")
+    # the cap: sky-blue light along the top, cobalt below it
+    cap = f"{Q(-2.05, 3.0)} .. controls {Q(-2.2, 5.45)} and {Q(2.2, 5.45)} .. {Q(2.05, 3.0)} .. controls {Q(1.2, 2.72)} and {Q(-1.2, 2.72)} .. cycle"
+    inner = f"\\fill[bumperlight] {Q(-3, 2.5)} rectangle {Q(3, 6)};\n"
+    inner += f"\\fill[bumper] {Q(0.35, 2.75)} ellipse ({f(2.4 * s)} and {f(1.5 * s)});\n"
+    for dx, dy, r in ((-1.25, 3.75, 0.3), (-0.25, 4.3, 0.33), (0.85, 4.05, 0.28), (1.5, 3.4, 0.2), (-0.55, 3.35, 0.19), (0.45, 3.3, 0.15), (-1.7, 3.2, 0.13)):
+        inner += circle(x + dx * s, y + dy * s, r * s, "bumperspot", ",line width=0.8pt")
+    inner += f"\\fill[white, opacity=0.55] {Q(-1.05, 4.45)} ellipse ({f(0.32 * s)} and {f(0.13 * s)});\n"
+    out += clipped(cap, inner)
+    out += f"\\draw[inked] {cap};\n"
+    return out
+
+
+def shelf_body(fill="shelf"):
+    """A bracket fungus growing out sideways from a trunk at the origin,
+    reaching along +x: a fan with a pale rim and growth rings."""
+    s = f"\\filldraw[inked,fill=shelfdark] (0,-0.05) .. controls (0.4,-0.36) and (0.95,-0.3) .. (1.05,-0.08) -- (0.9,0.02) -- (0,0.05) -- cycle;\n"
+    path = "(0,0.22) .. controls (0.55,0.36) and (1.15,0.22) .. (1.15,0.0) .. controls (1.1,-0.16) and (0.45,-0.2) .. (0,-0.08) -- cycle"
+    s += f"\\filldraw[inked,fill={fill}] {path};\n"
+    s += f"\\draw[cream, line width=1.2pt, line cap=round] (0.25,-0.06) .. controls (0.6,-0.12) and (1.0,-0.1) .. (1.06,-0.02);\n"
+    for k, r in enumerate((0.45, 0.75)):
+        s += f"\\draw[shelfdark, line width=0.7pt, line cap=round] (0.05,{f(0.2 - k * 0.02)}) .. controls ({f(r * 0.6)},{f(0.26 - k * 0.04)}) and ({f(r)},{f(0.14)}) .. ({f(r + 0.05)},{f(0.0)});\n"
+    return s
+
+
+def forest_tree(x, y, w, rng, shelves=()):
+    """A broad trunk rising out of the picture, flared roots, bark lines,
+    and shelf fungi stepping up it: shelves are (height, side, size)."""
+    top = 18.5
+    out = ""
+    for side in (-1, 1):
+        out += poly([(x + side * w * 0.3, y + 1.4), (x + side * w * 0.5, y + 0.2), (x + side * w * 1.15, y - 0.2), (x + side * w * 0.95, y + 0.15), (x + side * w * 0.2, y + 0.4)], "wooddark")
+    out += rect(x - w / 2, y, x + w / 2, top, "wood")
+    for k in range(4):
+        bx = x - w * 0.32 + k * w * 0.21 + rng.uniform(-0.05, 0.05)
+        out += curve([(bx, y + 0.4), (bx + rng.uniform(-0.08, 0.08), y + 4), (bx + rng.uniform(-0.08, 0.08), top)], lw=0.8, colour="wooddark")
+    out += f"\\fill[white, opacity=0.12] {P(x - w / 2, y)} rectangle {P(x - w * 0.3, top)};\n"
+    for h, side, sz in shelves:
+        out += place(x + side * w / 2, y + h, sz, shelf_body(), flip=side < 0)
+    return out
+
+
+def glow_toadstool(x, y, s, glow="glowteal"):
+    """A small toadstool that glows: a soft halo (light, so unoutlined), a
+    thin cream stem, a teal or violet dome with paler dots."""
+    hi = glow + "hi"
+    out = f"\\fill[{glow}, opacity=0.18] {P(x, y + 0.85 * s)} circle ({f(1.05 * s)});\n"
+    out += f"\\fill[{hi}, opacity=0.22] {P(x, y + 0.85 * s)} circle ({f(0.65 * s)});\n"
+    out += poly([(x - 0.11 * s, y), (x + 0.11 * s, y), (x + 0.08 * s, y + 0.75 * s), (x - 0.08 * s, y + 0.75 * s)], "stem", ",line width=0.8pt")
+    out += f"\\filldraw[inked,fill={glow}] {P(x - 0.48 * s, y + 0.68 * s)} .. controls {P(x - 0.45 * s, y + 1.35 * s)} and {P(x + 0.45 * s, y + 1.35 * s)} .. {P(x + 0.48 * s, y + 0.68 * s)} .. controls {P(x + 0.2 * s, y + 0.6 * s)} and {P(x - 0.2 * s, y + 0.6 * s)} .. cycle;\n"
+    for dx, dy, r in ((-0.2, 0.9, 0.07), (0.12, 1.05, 0.08), (0.28, 0.82, 0.05)):
+        out += f"\\fill[{hi}] {P(x + dx * s, y + dy * s)} circle ({f(r * s)});\n"
+    return out
+
+
+def glow_cluster(x, y, s, rng, glow="glowteal"):
+    out = ""
+    for dx, ds in ((-0.45, 0.7), (0.0, 1.0), (0.4, 0.6)):
+        out += glow_toadstool(x + dx * s, y + rng.uniform(-0.05, 0.05), s * ds, glow)
+    return out
+
+
+def puffball(x, y, r):
+    """A puffball: a round cream ball, flat at the foot, freckled, with a
+    little pore on top."""
+    out = blob([(x - r, y + r * 0.35), (x - r * 0.75, y + r * 1.05), (x, y + r * 1.35), (x + r * 0.75, y + r * 1.05), (x + r, y + r * 0.35), (x + r * 0.6, y), (x - r * 0.6, y)], "puff")
+    for dx, dy in ((-0.45, 0.6), (0.1, 0.9), (0.5, 0.5), (-0.1, 0.35), (0.35, 1.0)):
+        out += f"\\fill[puffdark] {P(x + dx * r, y + dy * r)} circle ({f(r * 0.08)});\n"
+    out += f"\\fill[ink] {P(x + 0.05 * r, y + 1.3 * r)} ellipse ({f(r * 0.12)} and {f(r * 0.05)});\n"
+    out += glint(x - 0.45 * r, y + 0.95 * r, r * 0.13, 0.7)
+    return out
+
+
+def ground_web(cx, cy, r, rng, flat=0.34):
+    """A spider web stretched flat over a pit like a trampoline: the pit, a
+    mossy rim, pegs at the anchors, and the web seen nearly edge-on."""
+    out = ellipse(cx, cy, r * 1.12, r * flat * 1.25, "fungmossdark")
+    out += ellipse(cx, cy - r * flat * 0.08, r * 0.98, r * flat * 0.95, "basaltdark")
+    out += f"\\fill[ink, opacity=0.4] {P(cx, cy - r * flat * 0.3)} ellipse ({f(r * 0.7)} and {f(r * flat * 0.5)});\n"
+    pegs = [(math.cos(math.radians(a)) * r * 1.02, math.sin(math.radians(a)) * r * 1.02) for a in (20, 160, 205, 335)]
+    out += f"\\begin{{scope}}[shift={{{P(cx, cy)}}}, yscale={f(flat)}]\n"
+    out += web(0, 0, r * 0.95, pegs, rng, spokes=10, rings=5, spider=False)
+    out += "\\end{scope}\n"
+    for px, py in pegs:
+        out += rrect(cx + px - 0.07, cy + py * flat - 0.05, cx + px + 0.07, cy + py * flat + 0.32, "wood", r=0.04, extra=",line width=0.8pt")
+    return out
+
+
+def waterfall(x0, x1, ytop, ybot, rng):
+    """A narrow fall of water from a lip, streaked, foaming at its foot."""
+    out = f"\\filldraw[inked,fill=water] {P(x0, ytop)} .. controls {P((x0 + x1) / 2, ytop + 0.25)} .. {P(x1, ytop)} -- {P(x1 + 0.2, ybot)} -- {P(x0 - 0.15, ybot)} -- cycle;\n"
+    for k in range(4):
+        sx = x0 + 0.18 + k * (x1 - x0 - 0.3) / 3
+        y0 = ytop - rng.uniform(0.2, 0.8)
+        out += line((sx, y0), (sx + 0.04, y0 - rng.uniform(1.4, 2.6)), lw=1.6, colour="waterlight")
+        out += line((sx + 0.05, ybot + rng.uniform(0.6, 1.0)), (sx + 0.07, ybot + rng.uniform(1.6, 2.2)), lw=1.4, colour="foam")
+    for k in range(7):
+        fx = x0 - 0.35 + k * (x1 - x0 + 0.7) / 6
+        out += circle(fx, ybot + rng.uniform(-0.05, 0.15), rng.uniform(0.18, 0.3), "foam", ",line width=0.8pt")
+    return out
+
+
 # ---- pictures --------------------------------------------------------------
 
 def title():
@@ -1347,6 +1541,9 @@ def swamp():
     # a turtle shell, a dragonfly
     s += turtle(18.6, 0.75, 1.0)
     s += dragonfly(20.5, 9.6, 1.0)
+    # point bubbles drifting over the course
+    s += bubble(14.6, 9.9, 0.42)
+    s += bubble(20.2, 12.9, 0.5)
     return s, (W, H)
 
 
@@ -1401,6 +1598,9 @@ def desert():
     s += place(13.6, 1.9, 0.38, frog(FROG["goldie"]))
     # flies to the lotus
     s += fly_line((12.5, 9.5), (21.0, 13.5), (26.5, 4.8), 0.05, 0.95, 9, 0.34, rng)
+    # point bubbles drifting over the course
+    s += bubble(14.0, 12.8, 0.45)
+    s += bubble(24.0, 13.9, 0.45)
     return s, (W, H)
 
 
@@ -1466,6 +1666,9 @@ def city():
     s += car(30.4, 0.3, 0.95, "carD")
     # flies along the street to the fountain
     s += fly_line((12.0, 9.0), (19.5, 13.8), (26.9, 7.9), 0.0, 0.92, 9, 0.34, rng)
+    # point bubbles drifting over the course
+    s += bubble(18.8, 16.5, 0.45)
+    s += bubble(31.0, 14.5, 0.45)
     return s, (W, H)
 
 
@@ -1526,6 +1729,103 @@ def volcano_hole():
         s += f"\\fill[lavagold, opacity=0.85] {P(ex, ey)} circle ({f(rng.uniform(0.04, 0.08))});\n"
     # flies across the lava to the pool
     s += fly_line((13.0, 7.6), (19.0, 12.5), (24.8, 4.4), 0.02, 0.95, 9, 0.34, rng)
+    # point bubbles drifting over the course
+    s += bubble(14.6, 11.6, 0.45)
+    s += bubble(29.6, 10.8, 0.45)
+    return s, (W, H)
+
+
+def fungus():
+    """Toadstool Hollow: a dusky violet-teal sky under a forest canopy,
+    warm light shafts, giant blue bumper mushrooms towering over a frog,
+    red explosive mushrooms in the undergrowth, shelf fungi stepping up a
+    trunk, glowing toadstools, puffballs, a waterfall into a stream, a web
+    stretched flat over a pit, point bubbles, and the lotus on a mossy
+    island. The left third is plain moss and sky."""
+    W, H = 32.0, 18.0
+    rng = random.Random(4242)
+    hz = 6.4
+    s = sky(W, H, "fungskyhi", "fungsky", "fungskylow", a=0.72, b=0.42)
+    for (cx, cy, cs) in [(4.5, 15.6, 1.2), (9.2, 12.6, 0.65)]:
+        s += cloud(cx, cy, cs, "fungcloud")
+    # the far forest: pale trunks and the canopy closing over the right
+    for (tx, tw) in [(12.6, 0.7), (15.8, 0.9), (24.2, 0.8), (26.6, 0.6), (31.4, 1.0)]:
+        s += rect(tx - tw / 2, hz - 0.4, tx + tw / 2, H + 0.5, "farbark")
+    for k in range(15):
+        cx_ = 11.8 + k * 1.45 + rng.uniform(-0.3, 0.3)
+        s += circle(cx_, 17.6 + rng.uniform(-0.3, 0.5), rng.uniform(1.0, 1.5), rng.choice(["greenD", "greenE", "cypress"]))
+    for k in range(9):
+        mx = 12.5 + k * 2.3 + rng.uniform(-0.4, 0.4)
+        s += curve([(mx, 16.6), (mx + 0.08, 15.9), (mx - 0.05, 15.2 - rng.uniform(0, 0.6))], lw=1.6, colour="moss")
+    for k in range(18):
+        s += bush(-0.5 + k * 1.9 + rng.uniform(-0.3, 0.3), hz - 0.5, rng.uniform(0.85, 1.2), rng)
+    # the cliff and the waterfall
+    s += blob([(25.8, 5.4), (26.3, 8.6), (27.4, 10.7), (28.6, 11.5), (30.4, 11.7), (31.8, 12.3), (33.2, 12.4), (33.2, 5.4)], "cliff", tension=0.5)
+    s += f"\\fill[white, opacity=0.12] (26.1,6.0) .. controls (26.5,8.8) .. (27.6,10.7) -- (28.2,10.4) .. controls (27.2,8.6) .. (27.0,6.0) -- cycle;\n"
+    for (a, b) in [((26.6, 8.4), (28.4, 8.6)), ((27.6, 10.0), (28.8, 10.2)), ((30.8, 9.2), (32.4, 9.4)), ((26.4, 7.0), (28.6, 7.1))]:
+        s += line(a, b, lw=0.9, colour="cliffdark")
+    s += waterfall(29.0, 30.2, 11.62, hz - 0.1, rng)
+    for (tx, ty) in [(28.2, 11.4), (31.2, 12.0), (32.0, 12.3)]:
+        s += tuft(tx, ty, 0.55, "fungmoss")
+    s += glow_cluster(27.6, 8.5, 0.5, rng, "glowviolet")
+    # the mossy floor
+    s += rect(-0.5, -0.5, W + 0.5, hz, "fungmoss")
+    s += f"\\draw[ink, line width={f(CUR_INK)}pt] (-0.5,{f(hz)}) -- ({f(W + 0.5)},{f(hz)});\n"
+    s += f"\\fill[fungmossdark] (-0.5,-0.5) rectangle ({f(W + 0.5)},1.2);\n"
+    s += f"\\draw[ink, line width={f(CUR_INK)}pt] (-0.5,1.2) .. controls (8,1.5) and (16,0.9) .. ({f(W + 0.5)},1.3);\n"
+    for _ in range(40):
+        mx, my = rng.uniform(11.5, 31.5), rng.uniform(1.5, hz - 0.3)
+        s += f"\\fill[fungmosslight] {P(mx, my)} ellipse ({f(rng.uniform(0.15, 0.4))} and 0.07);\n"
+    # the stream from the fall's foot, widening into a pool
+    pond = [(21.6, 0.6), (22.7, 3.0), (25.0, 4.1), (28.3, 4.2), (28.9, 5.3), (29.0, 6.35), (30.5, 6.35), (30.8, 5.0), (33.0, 4.4), (33.0, -1.0), (21.2, -1.0)]
+    s += blob(pond, "water", tension=0.55)
+    s += clipped(blob_path(pond, 0.55), ripples(rng, 14, 21.5, 32, 0.3, 5.6, "waterlight"))
+    for k in range(5):
+        s += circle(29.1 + k * 0.38, hz - 0.05 + rng.uniform(-0.05, 0.1), rng.uniform(0.15, 0.25), "foam", ",line width=0.8pt")
+    # warm light shafts slanting down through the canopy
+    for (xt, w) in [(17.6, 1.1), (23.2, 1.6), (28.6, 0.9)]:
+        s += f"\\fill[sun, opacity=0.2] {P(xt + 0.5, 18.5)} -- {P(xt + w + 0.5, 18.5)} -- {P(xt + w - 5.0, -0.5)} -- {P(xt - 5.6, -0.5)} -- cycle;\n"
+    # the big trunk with shelf fungi stepping up it
+    s += forest_tree(20.4, hz - 0.7, 1.5, rng, shelves=[(1.5, 1, 0.75), (2.7, -1, 0.85), (3.9, 1, 0.95), (5.2, -1, 0.8), (6.4, 1, 0.7), (7.6, -1, 0.6)])
+    s += glow_cluster(19.0, hz - 0.65, 0.55, rng, "glowteal")
+    s += mushroom(21.9, hz - 0.75, 0.36)
+    # the bumpers: giant blue mushrooms, the far one smaller
+    frog_s = 0.36
+    bumpers = [(17.2, hz - 0.25, 0.6), (25.0, 4.5, 0.92), (15.0, 1.5, 1.25)]
+    for bx, by, bs in bumpers:
+        # facts: a bumper towers over a frog, at least twice its height
+        assert BUMPER_H * bs >= 2 * FROG_H * frog_s, "a bumper must tower over the frogs"
+    for bx, by, bs in bumpers[:2]:
+        s += blue_mushroom(bx, by, bs)
+    s += glow_cluster(27.4, 4.3, 0.45, rng, "glowteal")
+    # the web stretched flat over its pit, a trampoline
+    s += ground_web(18.6, 2.0, 1.45, rng)
+    # the near bumper and the frog under its cap
+    s += blue_mushroom(*bumpers[2])
+    s += place(12.6, 0.55, frog_s, frog(FROG["glassy"]))
+    # the lotus on its mossy island
+    s += ellipse(26.4, 1.75, 2.45, 0.9, "fungmossdark")
+    s += ellipse(26.4, 1.95, 2.25, 0.72, "fungmoss")
+    s += f"\\fill[fungmosslight] (25.4,2.2) ellipse (0.7 and 0.15);\n"
+    s += lotus(26.5, 1.75, 1.2, pad=False)
+    s += tuft(24.6, 1.6, 0.45, "fungmossdark")
+    s += puffball(28.3, 1.5, 0.3)
+    # red explosive mushrooms, puffballs, glow and tufts in the undergrowth
+    s += mushroom(17.1, 0.25, 0.55)
+    s += mushroom(17.9, 0.15, 0.33)
+    s += mushroom(31.7, 4.55, 0.42)
+    s += puffball(20.6, 0.35, 0.42)
+    s += puffball(21.2, 0.25, 0.26)
+    s += puffball(12.9, 3.6, 0.3)
+    s += puffball(23.1, 4.6, 0.32)
+    s += glow_cluster(13.8, 4.4, 0.5, rng, "glowviolet")
+    s += glow_cluster(21.5, 2.3, 0.4, rng, "glowteal")
+    for (tx, ty, ts) in [(16.3, 3.5, 0.5), (22.3, 5.4, 0.45), (13.9, 1.3, 0.5), (19.8, 1.1, 0.55)]:
+        s += tuft(tx, ty, ts, "fungmossdark")
+    # point bubbles drifting, and flies leading to the lotus
+    for (bx, by, br) in [(18.4, 4.2, 0.42), (14.6, 8.7, 0.45), (23.4, 13.6, 0.55), (28.2, 13.9, 0.42)]:
+        s += bubble(bx, by, br)
+    s += fly_line((12.2, 9.6), (22.0, 17.0), (28.2, 6.0), 0.1, 0.94, 7, 0.32, rng)
     return s, (W, H)
 
 
@@ -1667,6 +1967,35 @@ def icon(kind):
     elif kind == "stroke":
         s += place(2.35, 3.55, 1.25, mallet_body()
 .replace("3.6,0.17", "2.9,0.17").replace("(3.2,-0.2) rectangle (3.65,0.2)", "(2.5,-0.2) rectangle (2.95,0.2)"), -55)
+    elif kind == "bubble":
+        s += bubble(3.0, 3.0, 2.2)
+    elif kind == "bumper":
+        # the bumper mushroom, and boing arcs (arcs, never letters): the
+        # cap's springy outline echoed above it and wobbling at its sides
+        bs = 0.82
+        s += blue_mushroom(3.0, 0.75, bs)
+        cx, cy = 3.0, 0.75 + 3.0 * bs
+        for k, (R, a0, a1) in enumerate(((2.15, 38, 72), (2.5, 44, 66), (2.15, 108, 142), (2.5, 114, 136))):
+            s += f"\\draw[ink, line width={f(CUR_INK * 1.3)}pt, line cap=round] ([shift={{({f(a0)}:{f(R)})}}]{f(cx)},{f(cy)}) arc[start angle={f(a0)}, end angle={f(a1)}, radius={f(R)}];\n"
+        for R in (2.2, 2.52):
+            for a0, a1 in ((-14, 14), (166, 194)):
+                s += f"\\draw[ink, line width={f(CUR_INK * 1.3)}pt, line cap=round] ([shift={{({f(a0)}:{f(R)} and {f(R * 0.7)})}}]{f(cx)},{f(cy + 0.35)}) arc[start angle={f(a0)}, end angle={f(a1)}, x radius={f(R)}, y radius={f(R * 0.7)}];\n"
+    elif kind == "swim":
+        # a frog's head poking out of the water beside a lily pad, ripples
+        # ringing it: the frog is clipped at the waterline
+        wl, fx, fs = 2.15, 3.35, 0.9
+        s += f"\\begin{{scope}}\\clip (3,3) circle (2.88);\n"
+        s += f"\\fill[water, opacity=0.55] (3.0,1.6) ellipse (3.0 and 1.55);\n"
+        s += "\\end{scope}\n"
+        s += lily_pad(1.3, 1.45, 0.95, 0.34, 320)
+        for R, op in ((1.45, 0.9), (1.9, 0.7)):
+            s += f"\\draw[foam, line width={f(CUR_INK * 1.8)}pt, opacity={f(op)}] ([shift={{(5:{f(R)} and {f(R * 0.27)})}}]{f(fx)},{f(wl)}) arc[start angle=5, end angle=175, x radius={f(R)}, y radius={f(R * 0.27)}];\n"
+        s += f"\\begin{{scope}}\\clip (0,{f(wl)}) rectangle (6,6);\n"
+        s += place(fx, wl - 1.95 * fs, fs, frog(FROG["lime"]))
+        s += "\\end{scope}\n"
+        s += f"\\draw[ink, line width={f(CUR_INK)}pt, line cap=round] {P(fx - 1.95 * fs, wl)} -- {P(fx + 1.95 * fs, wl)};\n"
+        for R, op in ((1.0, 1.0), (1.45, 0.9), (1.9, 0.7)):
+            s += f"\\draw[foam, line width={f(CUR_INK * 1.8)}pt, opacity={f(op)}] ([shift={{(185:{f(R)} and {f(R * 0.27)})}}]{f(fx)},{f(wl)}) arc[start angle=185, end angle=355, x radius={f(R)}, y radius={f(R * 0.27)}];\n"
 
     return s, (W, H)
 
@@ -1677,11 +2006,12 @@ PICTURES = {
     "holes/desert": desert,
     "holes/city": city,
     "holes/volcano": volcano_hole,
+    "holes/fungus": fungus,
     "crown": crown,
 }
 for fr in FROGS:
     PICTURES[f"frogs/{fr['id']}"] = (lambda i=fr["id"]: portrait(i))
-for k in ("jump", "wings", "mushroom", "fly", "tongue", "lotus", "web", "lilypad", "stroke"):
+for k in ("jump", "wings", "mushroom", "fly", "tongue", "lotus", "web", "lilypad", "stroke", "bubble", "bumper", "swim"):
     PICTURES[f"icons/{k}"] = (lambda k=k: icon(k))
 
 # dpi for each folder: 32 cm key art at 150 dpi is 1890 px wide, as
@@ -1706,7 +2036,7 @@ def main():
     global CUR_INK
     only = set(sys.argv[1:])
     for name, make in PICTURES.items():
-        if only and name not in only and name.split("/")[0] not in only:
+        if only and not only & {name, name.split("/")[0], name.split("/")[-1]}:
             continue
         folder = name.split("/")[0] if "/" in name else ""
         CUR_INK = INK.get(folder, 1.15)

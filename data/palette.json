@@ -86,7 +86,28 @@
     "bench": "#B9835A",
     "sign_a": "#FF2E88",
     "sign_b": "#13CFE3",
-    "sign_c": "#FFB000"
+    "sign_c": "#FFB000",
+    "pit": "#2B2028",
+    "bumper_cap": "#4A8FE7",
+    "bumper_spot": "#DDEEFF",
+    "bumper_stem": "#F2E6C8",
+    "bumper_gill": "#9FC4F0",
+    "bubble_star": "#FFE066",
+    "firework_a": "#FF5FA2",
+    "firework_b": "#6FE3FF",
+    "firework_c": "#FFE066",
+    "snail_shell": "#C9844A",
+    "snail_shell_dark": "#7A4A2E",
+    "snail_body": "#B9C48A",
+    "antlion": "#8C6A44",
+    "antlion_jaw": "#4A3424",
+    "whirl": "#A8E0E8",
+    "toadstool_cap": "#E0352E",
+    "glowcap": "#7FF2E0",
+    "glowcap_b": "#C08AF5",
+    "puffball": "#F2E8D2",
+    "shelf": "#D9A36A",
+    "moss_deep": "#4F7A55"
   },
   "themes": {
     "swamp": {
@@ -97,7 +118,10 @@
       "light": "#FFF1D0",
       "window_dark": "#5A4A50",
       "ink": "#3B2340",
-      "ground": ["#7FA36A", "#97B576"],
+      "ground": [
+        "#7FA36A",
+        "#97B576"
+      ],
       "fairway": "#A9C97F",
       "shore": "#9C8A5E",
       "bed": "#4E7A66",
@@ -105,9 +129,16 @@
       "far": "#7E9C68",
       "hazard": "#4E8F7A",
       "hazard_glow": 0,
-      "paints": { "path": "#C9A97A" },
+      "paints": {
+        "path": "#C9A97A"
+      },
       "walls": [],
-      "greens": ["#5E9C6A", "#6FA77A", "#8DBB7E", "#4F8A5E"]
+      "greens": [
+        "#5E9C6A",
+        "#6FA77A",
+        "#8DBB7E",
+        "#4F8A5E"
+      ]
     },
     "desert": {
       "sky": "#F5D98C",
@@ -117,7 +148,10 @@
       "light": "#FFF4D8",
       "window_dark": "#8C5A64",
       "ink": "#3B2340",
-      "ground": ["#E9C27D", "#E2B36E"],
+      "ground": [
+        "#E9C27D",
+        "#E2B36E"
+      ],
       "fairway": "#F0CF8C",
       "shore": "#C9A06A",
       "bed": "#3F8F9A",
@@ -125,9 +159,16 @@
       "far": "#E4B877",
       "hazard": "#4FB3C2",
       "hazard_glow": 0,
-      "paints": { "oasis_grass": "#8DBB7E", "track": "#D8A866" },
+      "paints": {
+        "oasis_grass": "#8DBB7E",
+        "track": "#D8A866"
+      },
       "walls": [],
-      "greens": ["#6FA77A", "#8DBB7E", "#5E9C6A"]
+      "greens": [
+        "#6FA77A",
+        "#8DBB7E",
+        "#5E9C6A"
+      ]
     },
     "city": {
       "sky": "#EFC46A",
@@ -137,7 +178,10 @@
       "light": "#FFF1D0",
       "window_dark": "#8C5A64",
       "ink": "#3B2340",
-      "ground": ["#E2BD8C", "#DDB584"],
+      "ground": [
+        "#E2BD8C",
+        "#DDB584"
+      ],
       "fairway": "#E2BD8C",
       "shore": "#E7C9A0",
       "bed": "#5FB7B0",
@@ -145,9 +189,25 @@
       "far": "#D3A77D",
       "hazard": "#5FB7B0",
       "hazard_glow": 0,
-      "paints": { "asphalt": "#6E6066", "sidewalk": "#E7C9A0", "plaza": "#EBD3A8", "crossing": "#8A7A80" },
-      "walls": ["#E88A73", "#EE9F7E", "#E47A7E", "#F0B07E", "#D9765F", "#E99A8A"],
-      "greens": ["#8DBB7E", "#6FA77A", "#A9C97F"]
+      "paints": {
+        "asphalt": "#6E6066",
+        "sidewalk": "#E7C9A0",
+        "plaza": "#EBD3A8",
+        "crossing": "#8A7A80"
+      },
+      "walls": [
+        "#E88A73",
+        "#EE9F7E",
+        "#E47A7E",
+        "#F0B07E",
+        "#D9765F",
+        "#E99A8A"
+      ],
+      "greens": [
+        "#8DBB7E",
+        "#6FA77A",
+        "#A9C97F"
+      ]
     },
     "volcano": {
       "sky": "#E3895E",
@@ -157,7 +217,10 @@
       "light": "#FFD8B0",
       "window_dark": "#3A2A33",
       "ink": "#2A1A26",
-      "ground": ["#5A4A52", "#66545C"],
+      "ground": [
+        "#5A4A52",
+        "#66545C"
+      ],
       "fairway": "#7A6670",
       "shore": "#3A2C34",
       "bed": "#FF6A1A",
@@ -165,9 +228,45 @@
       "far": "#4E3E46",
       "hazard": "#FF6A1A",
       "hazard_glow": 70,
-      "paints": { "ash": "#8C7A80", "obsidian": "#2E2630" },
+      "paints": {
+        "ash": "#8C7A80",
+        "obsidian": "#2E2630"
+      },
       "walls": [],
-      "greens": ["#7FA36A", "#8C9A5E"]
+      "greens": [
+        "#7FA36A",
+        "#8C9A5E"
+      ]
+    },
+    "fungus": {
+      "sky": "#C9B6E4",
+      "fog": "#B7A3D2",
+      "fog_near": 9000,
+      "fog_far": 42000,
+      "light": "#FFEFD8",
+      "window_dark": "#5A4A60",
+      "ink": "#3B2340",
+      "ground": [
+        "#6E9A6A",
+        "#82AA74"
+      ],
+      "fairway": "#9CC488",
+      "shore": "#7A6A58",
+      "bed": "#3E6E70",
+      "rock": "#7A6A80",
+      "far": "#6A8A66",
+      "hazard": "#4E8F9A",
+      "hazard_glow": 0,
+      "paints": {
+        "moss": "#5E8A5A"
+      },
+      "walls": [],
+      "greens": [
+        "#4F8A5E",
+        "#6FA77A",
+        "#5E9C6A",
+        "#3F7A55"
+      ]
     }
   }
 }

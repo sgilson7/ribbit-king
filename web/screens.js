@@ -103,7 +103,7 @@ export function makeScreens(game, copy, refresh) {
         th.append(make("span", "word", fill(copy.par, h)));
         head.append(th);
       }
-      head.append(make("th", "", copy.card_total), make("th", "", copy.card_flies));
+      head.append(make("th", "", copy.card_total), make("th", "", copy.card_points), make("th", "", copy.card_flies));
       s.rows.forEach((r, k) => {
         const row = table.insertRow();
         if (r.total === s.rows[0].total) row.className = "lead";
@@ -123,7 +123,7 @@ export function makeScreens(game, copy, refresh) {
         });
         const total = make("td", "total", r.total);
         total.append(make("span", "word", r.vs));
-        row.append(total, make("td", "", r.flies));
+        row.append(total, make("td", "pts", r.points), make("td", "", r.flies));
         if (k === 0) row.dataset.first = "true";
       });
       el("card-next").textContent = final ? copy.again : s.final ? copy.see_final : copy.next_hole;

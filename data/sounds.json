@@ -10,7 +10,9 @@
   "fly": 0.04,
   "land": 0.12,
   "tick": 0.05,
-  "bonk": 0.1
+  "bonk": 0.1,
+  "hop": 0.06,
+  "pop": 0.04
  },
  "recipes": {
   "turn": [
@@ -547,6 +549,180 @@
     "attack": 0.003,
     "dur": 0.5,
     "gain": 0.12
+   }
+  ],
+  "bumper": [
+   {
+    "type": "osc",
+    "wave": "sine",
+    "from": 300,
+    "to": 900,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.12,
+    "gain": 0.3
+   },
+   {
+    "type": "osc",
+    "wave": "square",
+    "from": 1200,
+    "to": 1600,
+    "at": 0.05,
+    "attack": 0.003,
+    "dur": 0.08,
+    "gain": 0.08
+   },
+   {
+    "type": "osc",
+    "wave": "triangle",
+    "from": 900,
+    "to": 1800,
+    "at": 0.08,
+    "attack": 0.003,
+    "dur": 0.2,
+    "gain": 0.12
+   }
+  ],
+  "hop": [
+   {
+    "type": "osc",
+    "wave": "sine",
+    "from": 500,
+    "to": 800,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.07,
+    "gain": 0.08
+   }
+  ],
+  "whirl": [
+   {
+    "type": "noise",
+    "filter": "bandpass",
+    "freq": 500,
+    "q": 2,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.9,
+    "gain": 0.3
+   },
+   {
+    "type": "osc",
+    "wave": "sine",
+    "from": 400,
+    "to": 150,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.9,
+    "gain": 0.1
+   }
+  ],
+  "chomp": [
+   {
+    "type": "osc",
+    "wave": "square",
+    "from": 180,
+    "to": 90,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.08,
+    "gain": 0.25
+   },
+   {
+    "type": "osc",
+    "wave": "square",
+    "from": 160,
+    "to": 80,
+    "at": 0.12,
+    "attack": 0.003,
+    "dur": 0.08,
+    "gain": 0.25
+   },
+   {
+    "type": "noise",
+    "filter": "lowpass",
+    "freq": 600,
+    "q": 1,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.2,
+    "gain": 0.3
+   }
+  ],
+  "pop": [
+   {
+    "type": "osc",
+    "wave": "sine",
+    "from": 900,
+    "to": 1500,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.05,
+    "gain": 0.18
+   },
+   {
+    "type": "noise",
+    "filter": "highpass",
+    "freq": 4000,
+    "q": 0.7,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.04,
+    "gain": 0.12
+   }
+  ],
+  "firework": [
+   {
+    "type": "noise",
+    "filter": "bandpass",
+    "freq": 2500,
+    "q": 3,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.5,
+    "gain": 0.15
+   },
+   {
+    "type": "osc",
+    "wave": "sine",
+    "from": 600,
+    "to": 2000,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.5,
+    "gain": 0.06
+   }
+  ],
+  "bang": [
+   {
+    "type": "noise",
+    "filter": "lowpass",
+    "freq": 900,
+    "q": 0.8,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.6,
+    "gain": 0.6
+   },
+   {
+    "type": "osc",
+    "wave": "sine",
+    "from": 200,
+    "to": 50,
+    "at": 0,
+    "attack": 0.003,
+    "dur": 0.4,
+    "gain": 0.3
+   },
+   {
+    "type": "noise",
+    "filter": "highpass",
+    "freq": 5000,
+    "q": 0.5,
+    "at": 0.05,
+    "attack": 0.003,
+    "dur": 0.8,
+    "gain": 0.08
    }
   ]
  }

@@ -39,6 +39,11 @@ pub struct Player {
     pub jumps: i32,
     /// which of the hole's flies this frog has caught
     pub caught: Vec<bool>,
+    /// which of the hole's point bubbles this frog has popped
+    pub popped: Vec<bool>,
+    /// points from bubbles: on each hole played, and on this one so far
+    pub point_scores: Vec<i32>,
+    pub points: i32,
     /// knocked by a tongue: where it was before, to go back to on a splash
     pub knocked_from: Option<V3>,
     /// facing, while sitting
@@ -79,6 +84,8 @@ pub enum Note {
     Say(&'static str, usize),
     /// a burst of particles: kind, where
     Burst(&'static str, V3),
+    /// a word on screen with a number in it (points)
+    SayN(&'static str, usize, i32),
 }
 
 #[derive(Debug, Clone)]
@@ -101,12 +108,29 @@ pub struct Round {
     pub taken: u32,
     /// ticks since each pad or web last threw a frog
     pub bounced: Vec<i32>,
+    /// ticks since each giant mushroom last threw a frog, and each antlion bit
+    pub bumped: Vec<i32>,
+    pub bitten: Vec<i32>,
     pub tongue: Option<Tongue>,
     pub tick: i32,
     rng: Rng,
     cpu_plan: Option<(i32, i32, usize, i32)>,
+    /// the CPU's search for a shot, a few imagined shots a tick, and the tick it finished
+    search: Option<Search>,
+    cpu_ready: i32,
     repeat: i32,
     jumped_this_flight: bool,
+}
+
+/// The CPU's search in progress: shots to imagine, how far it has got,
+/// what each scored, and the safety of the best ones.
+#[derive(Debug, Clone)]
+struct Search {
+    cands: Vec<(i32, i32, usize, i32)>,
+    next: usize,
+    found: Vec<(i32, i32, i32, usize)>,
+    stage: u8,
+    safe: Vec<i32>,
 }
 
 /// Inputs for one tick of play.
@@ -144,6 +168,9 @@ impl Round {
                     flies: 0,
                     jumps: 0,
                     caught: Vec::new(),
+                    popped: Vec::new(),
+                    point_scores: Vec::new(),
+                    points: 0,
                     knocked_from: None,
                     yaw: 0,
                     landed: 99,
@@ -161,10 +188,14 @@ impl Round {
             since_hit: 999,
             taken: 0,
             bounced: Vec::new(),
+            bumped: Vec::new(),
+            bitten: Vec::new(),
             tongue: None,
             tick: 0,
             rng: Rng::new(seed),
             cpu_plan: None,
+            search: None,
+            cpu_ready: 0,
             repeat: 0,
             jumped_this_flight: false,
         }
@@ -182,11 +213,15 @@ impl Round {
             p.lie = lie;
             p.body = Body::resting(lie);
             p.caught = vec![false; c.flies.len()];
+            p.popped = vec![false; c.bubbles.len()];
+            p.points = 0;
             p.knocked_from = None;
             p.yaw = to_lotus;
             p.jumps = 0;
         }
         self.bounced = vec![999; c.bouncers.len()];
+        self.bumped = vec![999; c.bumpers.len()];
+        self.bitten = vec![999; c.antlions.len()];
         self.tick = 0;
         self.tongue = None;
         self.phase = Phase::Aim;
@@ -234,6 +269,7 @@ impl Round {
         if open.is_empty() {
             for p in self.players.iter_mut() {
                 p.scores.push(p.strokes);
+                p.point_scores.push(p.points);
             }
             self.phase = Phase::Done;
             return;
@@ -262,6 +298,7 @@ impl Round {
         self.shot = None;
         self.since_hit = 999;
         self.cpu_plan = None;
+        self.search = None;
         self.needle = 0;
         if !first || next != 0 {
             notes.push(Note::Sound("turn"));
@@ -286,54 +323,130 @@ impl Round {
 
     /// The CPU's choice of line, loft and power: the shot whose imagined
     /// end is nearest the lotus, a splash counting as far away.
-    fn cpu_choose(&self, c: &Course, lie: V3) -> (i32, i32, usize) {
-        let straight = heading_to(lie, c.lotus);
-        let mut found = Vec::new();
-        for dy in [0, -6, 6, -14, 14] {
-            let yaw = straight + deg(dy);
-            for loft in 0..LOFTS.len() {
-                let mut p = POWER_MIN;
-                while p <= POWER_MAX {
-                    let (score, _) = judge(c, lie, p, yaw, LOFTS[loft], self.tick);
-                    // a little against bending away from the straight line
-                    found.push((score + dy.abs() * ONE / 8, yaw, p, loft));
-                    p += POWER_STEP;
+    /// The CPU's choice of line, loft and power, worked out a few imagined
+    /// shots a tick so a turn never stalls the page (CPU_SIMS_PER_TICK).
+    ///
+    /// The lines tried: straight at the lotus and a little either side, and
+    /// toward the far end of every stretch of fairway ahead that is nearer
+    /// the lotus, so the CPU follows the routes round cliffs and over
+    /// crossings rather than only beelining. Powers go in tens, then the
+    /// best few are tried five either side. Of the best eight, it takes the
+    /// one that still comes off if the whack is a little weak or crooked.
+    /// Returns the plan once the search is done.
+    fn cpu_search(&mut self, c: &Course) -> Option<(i32, i32, usize)> {
+        let lie = self.players[self.active].lie;
+        if self.search.is_none() {
+            let straight = heading_to(lie, c.lotus);
+            let mut yaws: Vec<(i32, i32)> = [0, -6, 6, -14, 14]
+                .iter()
+                .map(|d| (straight + deg(*d), d.abs() * ONE / 8))
+                .collect();
+            // and every way round, a little against, for a frog boxed in by walls
+            for k in 0..8 {
+                let yaw = straight + deg(45 * k + 22);
+                if yaws.iter().all(|(y, _)| fx::wrap(*y - yaw).abs() > deg(4)) {
+                    yaws.push((yaw, ONE * 5));
+                }
+            }
+            let here = c.to_lotus(lie);
+            for &(ax, az, bx, bz, _) in &c.def.fairways {
+                for (x, z) in [(ax, az), (bx, bz)] {
+                    let p = v3(x, 0, z);
+                    let d = v3(x - lie.x, 0, z - lie.z).len();
+                    if d > cm(2500) && d < cm(15000) && c.to_lotus(p) < here - cm(1500) {
+                        let yaw = heading_to(lie, p);
+                        if yaws.iter().all(|(y, _)| fx::wrap(*y - yaw).abs() > deg(4)) {
+                            yaws.push((yaw, ONE * 2));
+                        }
+                    }
+                }
+            }
+            let mut cands = Vec::new();
+            for &(yaw, bend) in &yaws {
+                for loft in 0..LOFTS.len() {
+                    let mut p = POWER_MIN;
+                    while p <= POWER_MAX {
+                        cands.push((yaw, p, loft, bend));
+                        p += POWER_STEP * 2;
+                    }
+                }
+            }
+            self.search = Some(Search {
+                cands,
+                next: 0,
+                found: Vec::new(),
+                stage: 0,
+                safe: Vec::new(),
+            });
+        }
+        let tick = self.tick;
+        let s = self.search.as_mut().unwrap();
+        let mut budget = CPU_SIMS_PER_TICK;
+        while budget > 0 {
+            match s.stage {
+                0 | 1 => {
+                    if let Some(&(yaw, p, loft, bend)) = s.cands.get(s.next) {
+                        let (score, _) = judge(c, lie, p, yaw, LOFTS[loft], tick);
+                        s.found.push((score + bend, yaw, p, loft));
+                        s.next += 1;
+                        budget -= 1;
+                    } else if s.stage == 0 {
+                        // refine the best four by five either side
+                        s.found.sort();
+                        let best: Vec<_> = s.found.iter().take(4).copied().collect();
+                        for (_, yaw, p, loft) in best {
+                            for dp in [-POWER_STEP, POWER_STEP] {
+                                let q = p + dp;
+                                if (POWER_MIN..=POWER_MAX).contains(&q) {
+                                    s.cands.push((yaw, q, loft, 0));
+                                }
+                            }
+                        }
+                        s.stage = 1;
+                    } else {
+                        s.found.sort();
+                        s.found.truncate(8);
+                        s.stage = 2;
+                    }
+                }
+                _ => {
+                    let k = s.safe.len();
+                    if k >= s.found.len() {
+                        let best = s
+                            .found
+                            .iter()
+                            .zip(s.safe.iter())
+                            .min_by_key(|(_, safe)| **safe)
+                            .map(|(f, _)| *f)
+                            .unwrap_or((0, heading_to(lie, c.lotus), POWER_MAX, LOFT_DEFAULT));
+                        self.search = None;
+                        return Some((best.1, best.2, best.3));
+                    }
+                    let (score, yaw, p, loft) = s.found[k];
+                    let mut worst = score;
+                    for (dp, dyaw) in [(-12, 0), (0, -5), (0, 5)] {
+                        let (s2, _) = judge(c, lie, p * (100 + dp) / 100, yaw + deg(dyaw), LOFTS[loft], tick);
+                        worst = worst.max(s2);
+                    }
+                    s.safe.push(score + worst / 2);
+                    budget -= 3;
                 }
             }
         }
-        found.sort();
-        // of the best few, the one that still comes off if the whack is a
-        // little weak or a little crooked
-        let mut best = found[0];
-        let mut best_safe = i32::MAX;
-        for &(score, yaw, p, loft) in found.iter().take(8) {
-            let mut worst = score;
-            for (dp, dyaw) in [(-12, 0), (0, -5), (0, 5)] {
-                let (s2, _) = judge(
-                    c,
-                    lie,
-                    p * (100 + dp) / 100,
-                    yaw + deg(dyaw),
-                    LOFTS[loft],
-                    self.tick,
-                );
-                worst = worst.max(s2);
-            }
-            let safe = score + worst / 2;
-            if safe < best_safe {
-                best_safe = safe;
-                best = (score, yaw, p, loft);
-            }
-        }
-        (best.1, best.2, best.3)
+        None
     }
 
     pub fn tick(&mut self, c: &Course, input: Input, notes: &mut Vec<Note>) {
         self.tick += 1;
         self.t += 1;
         self.since_hit += 1;
-        for b in self.bounced.iter_mut() {
-            *b += 1;
+        for b in self
+            .bounced
+            .iter_mut()
+            .chain(self.bumped.iter_mut())
+            .chain(self.bitten.iter_mut())
+        {
+            *b = (*b + 1).min(999);
         }
         for p in self.players.iter_mut() {
             p.landed += 1;
@@ -439,6 +552,9 @@ impl Round {
                 p.holed as i32,
                 p.cpu as i32,
                 p.body.wings,
+                p.points,
+                p.body.hops,
+                p.body.spin,
             ] {
                 mix(v as i64);
             }
@@ -551,6 +667,9 @@ impl Round {
                 notes.push(Note::Sound("perfect"));
                 notes.push(Note::Say("perfect", self.active));
                 notes.push(Note::Burst("sparkle", p.lie));
+                // a firework from the top of the striker's bell
+                notes.push(Note::Burst("firework", crate::draw::bell_top(self.catapult)));
+                notes.push(Note::Sound("firework"));
             }
             Hit::Good => notes.push(Note::Sound("boing")),
             Hit::Whiff => {
@@ -656,9 +775,39 @@ impl Round {
                         self.t = 0;
                     }
                 }
+                Outcome::Swim(level) => {
+                    // no stroke: the frog swims where it fell, and a lily pad
+                    // comes up under it for the next shot
+                    let p = &mut self.players[i];
+                    p.lie = v3(p.body.pos.x, level + FROG_RADIUS / 3, p.body.pos.z);
+                    p.body = Body::resting(p.lie);
+                    p.knocked_from = None;
+                    p.yaw = heading_to(p.lie, c.lotus);
+                    notes.push(Note::Sound("splash"));
+                    notes.push(Note::Burst("splash", pos));
+                    notes.push(Note::Say("swim", i));
+                    if flying_shot {
+                        self.phase = Phase::Settle;
+                        self.t = 0;
+                    }
+                }
+                Outcome::Grabbed(k) => {
+                    // the antlion holds the frog: the turn ends there, in the pit
+                    self.bitten[k] = 0;
+                    let p = &mut self.players[i];
+                    p.lie = p.body.pos;
+                    p.knocked_from = None;
+                    p.yaw = heading_to(p.lie, c.lotus);
+                    notes.push(Note::Sound("chomp"));
+                    notes.push(Note::Burst("dust", pos));
+                    notes.push(Note::Say("antlion", i));
+                    if flying_shot {
+                        self.phase = Phase::Settle;
+                        self.t = 0;
+                    }
+                }
                 Outcome::Hazard(_) | Outcome::Out => {
                     let (sound, say, burst) = match out {
-                        Outcome::Hazard(HazardKind::Water) => ("splash", "splash", "splash"),
                         Outcome::Hazard(HazardKind::Lava) => ("sizzle", "lava", "lava"),
                         _ => ("whiff", "out", "puff"),
                     };
@@ -702,6 +851,16 @@ impl Round {
                 notes.push(Note::Burst("blast", pos));
             }
             Event::Car => notes.push(Note::Sound("honk")),
+            Event::Bumper(k) => {
+                self.bumped[k] = 0;
+                notes.push(Note::Sound("bumper"));
+                notes.push(Note::Burst("sparkle", pos));
+            }
+            Event::Hop => notes.push(Note::Sound("hop")),
+            Event::Whirl => {
+                notes.push(Note::Sound("whirl"));
+                notes.push(Note::Say("whirlpool", i));
+            }
             Event::Wall => notes.push(Note::Sound("bonk")),
             Event::Bounce | Event::Landed => {
                 self.players[i].landed = 0;
@@ -718,12 +877,23 @@ impl Round {
             if !self.players[i].caught[k] && pos.dist(*f) < FLY_REACH {
                 self.players[i].caught[k] = true;
                 self.players[i].flies += 1;
+                // and one small hop when it next lands
+                self.players[i].body.hops += 1;
                 notes.push(Note::Sound("fly"));
                 notes.push(Note::Burst("gulp", *f));
                 if self.players[i].flies == FLIES_FOR_TONGUE {
                     notes.push(Note::Say("tongue_ready", i));
                     notes.push(Note::Sound("ready"));
                 }
+            }
+        }
+        for (k, b) in c.bubbles.iter().enumerate() {
+            if !self.players[i].popped[k] && pos.dist(b.at) < BUBBLE_REACH {
+                self.players[i].popped[k] = true;
+                self.players[i].points += b.points;
+                notes.push(Note::Sound("pop"));
+                notes.push(Note::Burst("pop", b.at));
+                notes.push(Note::SayN("points", i, b.points));
             }
         }
         for (k, (kind, at)) in c.items.iter().enumerate() {
@@ -754,13 +924,15 @@ impl Round {
         let me = self.active;
         match self.phase {
             Phase::Aim => {
-                if self.t == CPU_THINK / 2 {
-                    let lie = self.players[me].lie;
-                    let (yaw, power, loft) = self.cpu_choose(c, lie);
+                if self.cpu_plan.is_none() {
+                    let Some((yaw, power, loft)) = self.cpu_search(c) else {
+                        return input;
+                    };
                     // a miss of up to CPU_MISS degrees either way, nearer the middle more often
                     let miss =
                         (self.rng.range(-CPU_MISS, CPU_MISS) + self.rng.range(-CPU_MISS, CPU_MISS)) / 2;
                     self.cpu_plan = Some((yaw, power, loft, miss));
+                    self.cpu_ready = self.t;
                     self.power = power;
                     self.loft = loft;
                 }
@@ -775,12 +947,12 @@ impl Round {
                     }
                     // a frog within reach and flies to spare: the tongue
                     if self.players[me].flies >= FLIES_FOR_TONGUE
-                        && self.t == CPU_THINK
+                        && self.t == self.cpu_ready + 1
                         && self.someone_in_reach()
                     {
                         input.tongue = true;
                     }
-                    if self.t >= CPU_THINK + CPU_SETTLE && d.abs() <= AIM_TURN {
+                    if self.t >= (self.cpu_ready + CPU_SETTLE).max(CPU_THINK) && d.abs() <= AIM_TURN {
                         input.swing = true;
                     }
                 }
@@ -870,6 +1042,9 @@ fn judge(c: &Course, lie: V3, power: i32, yaw: i32, loft: i32, tick: i32) -> (i3
     let score = match out {
         Outcome::Lotus => 0,
         Outcome::Hazard(_) | Outcome::Out => c.to_lotus(lie) + cm(30_000),
+        // swimming costs nothing but a shot from the water; an antlion ends the turn in a pit
+        Outcome::Swim(_) => c.to_lotus(end) + cm(800),
+        Outcome::Grabbed(_) => c.to_lotus(end) + cm(1500),
         _ => c.to_lotus(end),
     };
     (score, end)
@@ -899,6 +1074,7 @@ pub fn score_word(strokes: i32, par: i32) -> &'static str {
 mod tests {
     use super::*;
     use crate::content::{parse_course, tests::files, Palette};
+    use crate::fx::int;
 
     fn course(i: usize) -> Course {
         let f = files();
@@ -947,40 +1123,106 @@ mod tests {
     }
 
     #[test]
-    fn a_shot_into_the_pond_costs_a_stroke_and_returns_the_frog_to_its_lie() {
+    fn a_frog_in_the_water_swims_on_with_no_stroke_and_plays_from_a_lily_pad() {
         let c = course(0);
         let mut r = Round::new(vec![(0, false)], 1);
         r.start_hole(&c);
-        let lie = r.players[0].lie;
-        // a whack straight at the first pond: 60 m at a high loft lands in it
         let mut notes = Vec::new();
-        // 92% at the middle loft carries about 71 m, into the pond, and a
-        // little right of the line misses the pads
+        // a shot already in the air, coming down into the lotus pond
+        let p = &mut r.players[0];
+        p.strokes = 1;
+        p.body = Body::resting(c.lotus.add(v3(int(7), int(5), int(5))));
+        p.body.launch(v3(0, -ONE / 10, 0));
+        r.phase = Phase::Flight;
+        for _ in 0..secs(6_000) {
+            r.tick(&c, Input::default(), &mut notes);
+            if r.phase == Phase::Aim {
+                break;
+            }
+        }
+        assert!(notes.contains(&Note::Say("swim", 0)), "{notes:?}");
+        assert_eq!(r.players[0].strokes, 1, "no stroke for the water");
+        assert_eq!(
+            r.players[0].lie.y,
+            c.lotus.y + FROG_RADIUS / 3,
+            "it plays from the water's surface"
+        );
+        assert_eq!(r.phase, Phase::Aim);
+    }
+
+    #[test]
+    fn a_bubble_scores_points_once_apart_from_the_strokes() {
+        let c = course(0);
+        let mut r = Round::new(vec![(0, false)], 1);
+        r.start_hole(&c);
+        let mut notes = Vec::new();
+        let b = c.bubbles[0];
+        for _ in 0..2 {
+            let p = &mut r.players[0];
+            p.body = Body::resting(b.at.add(v3(0, int(2), 0)));
+            p.body.launch(v3(0, -ONE / 10, 0));
+            r.phase = Phase::Flight;
+            for _ in 0..30 {
+                r.tick(&c, Input::default(), &mut notes);
+            }
+        }
+        assert_eq!(r.players[0].points, b.points, "popped once");
+        assert_eq!(r.players[0].strokes, 0);
+        assert!(notes.contains(&Note::SayN("points", 0, b.points)));
+    }
+
+    #[test]
+    fn a_perfect_whack_sets_off_a_firework_from_the_bell() {
+        let c = course(0);
+        let mut r = Round::new(vec![(0, false)], 1);
+        r.start_hole(&c);
+        let mut notes = Vec::new();
         r.shot = Some(Shot {
-            hit: Hit::Good,
-            power: 92 * 100,
-            yaw: -deg(6),
+            hit: Hit::Perfect,
+            power: 5_000,
+            yaw: r.yaw,
             loft: LOFTS[1],
         });
         r.phase = Phase::Swing;
         r.t = SWING_HIT;
-        let mut seen_penalty = false;
-        for _ in 0..secs(20_000) {
-            r.tick(&c, Input::default(), &mut notes);
-            seen_penalty |= r.phase == Phase::Penalty;
-            if seen_penalty && r.phase == Phase::Aim {
-                break;
-            }
-        }
-        assert!(seen_penalty, "the shot splashed: {notes:?}");
-        assert_eq!(r.players[0].strokes, 2, "one for the shot, one for the water");
-        assert_eq!(r.players[0].lie, lie);
-        assert!(notes.contains(&Note::Say("splash", 0)));
+        r.tick(&c, Input::default(), &mut notes);
+        let bell = crate::draw::bell_top(r.catapult);
+        assert!(notes.contains(&Note::Burst("firework", bell)), "{notes:?}");
+        // and a good hit does not
+        let mut r2 = Round::new(vec![(0, false)], 1);
+        r2.start_hole(&c);
+        let mut notes2 = Vec::new();
+        r2.shot = Some(Shot {
+            hit: Hit::Good,
+            power: 5_000,
+            yaw: r2.yaw,
+            loft: LOFTS[1],
+        });
+        r2.phase = Phase::Swing;
+        r2.t = SWING_HIT;
+        r2.tick(&c, Input::default(), &mut notes2);
+        assert!(!notes2.iter().any(|n| matches!(n, Note::Burst("firework", _))));
+    }
+
+    #[test]
+    fn each_fly_caught_adds_a_hop_to_the_next_landing() {
+        let c = course(0);
+        let mut r = Round::new(vec![(0, false)], 1);
+        r.start_hole(&c);
+        let mut notes = Vec::new();
+        let fly = c.flies[0];
+        let p = &mut r.players[0];
+        p.body = Body::resting(fly.add(v3(0, ONE, 0)));
+        p.body.launch(v3(0, -ONE / 20, 0));
+        r.phase = Phase::Flight;
+        r.tick(&c, Input::default(), &mut notes);
+        assert_eq!(r.players[0].flies, 1);
+        assert_eq!(r.players[0].body.hops, 1);
     }
 
     #[test]
     fn a_cpu_round_finishes_every_hole() {
-        for i in 0..4 {
+        for i in 0..5 {
             let c = course(i);
             let mut r = Round::new(vec![(0, true), (1, true)], 7 + i as u64);
             r.start_hole(&c);
@@ -1035,15 +1277,18 @@ mod tests {
 
     #[test]
     fn a_good_drive_down_the_line_catches_flies_on_every_hole() {
-        for i in 0..4 {
+        for i in 0..5 {
             let c = course(i);
             let mut r = Round::new(vec![(0, false)], 1);
             r.start_hole(&c);
+            // along the first line of flies, at the power they were strung for
+            let (from, to, power, _) = c.def.shot_flies[0];
+            let yaw = heading_to(v3(from.0, 0, from.1), v3(to.0, 0, to.1));
             r.shot = Some(Shot {
-                hit: Hit::Perfect,
-                power: 7_500,
-                yaw: r.yaw,
-                loft: LOFTS[1],
+                hit: Hit::Good,
+                power: power * 100,
+                yaw,
+                loft: LOFTS[LOFT_DEFAULT],
             });
             r.phase = Phase::Swing;
             r.t = SWING_HIT;

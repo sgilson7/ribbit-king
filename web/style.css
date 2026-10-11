@@ -170,3 +170,8 @@ summary { cursor: pointer; font-weight: 700; }
 .slot.remote .kind, .slot.you .kind { background: #bfd8f0; }
 .slot.open { border-style: dashed; }
 button:disabled { opacity: 0.45; cursor: default; box-shadow: none; transform: none; }
+
+/* points from bubbles */
+#h-standings .pts { font-size: 0.8em; opacity: 0.7; min-width: 3.6em; text-align: right; }
+.toast.points { font-size: clamp(1.1em, 2.4vw, 1.7em); color: #fff3a8; }
+#c-table td.pts { font-weight: 800; color: #3a7bd5; }

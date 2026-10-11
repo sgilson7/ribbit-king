@@ -60,8 +60,12 @@ pub const WALL_BOUNCE_PCT: i32 = 45;
 /// A lily pad throws a frog back up at least this fast.
 pub const PAD_MIN: i32 = mps(1500);
 pub const PAD_KEEP_PCT: i32 = 85;
-/// A spider web throws harder than a lily pad.
-pub const WEB_MIN: i32 = mps(2200);
+/// A spider web throws harder than a lily pad, and a bigger web harder
+/// still: WEB_MIN for a medium web (WEB_MEDIUM across its radius), and
+/// WEB_PER_METRE more for each metre of radius beyond.
+pub const WEB_MIN: i32 = mps(1900);
+pub const WEB_MEDIUM: i32 = cm(300);
+pub const WEB_PER_METRE: i32 = mps(160);
 pub const WEB_KEEP_PCT: i32 = 95;
 /// An explosive mushroom: how far its blast reaches and how hard it throws.
 pub const MUSHROOM_REACH: i32 = cm(150);
@@ -70,9 +74,27 @@ pub const MUSHROOM_OUT: i32 = mps(1500);
 /// Power-ups and flies are picked up within this distance of the frog's centre.
 pub const PICKUP_REACH: i32 = cm(150);
 pub const FLY_REACH: i32 = cm(260);
+/// Point bubbles pop within this distance of the frog's centre.
+pub const BUBBLE_REACH: i32 = cm(230);
 /// The lotus cup: inside this radius and height, the frog is in.
 pub const LOTUS_CUP_RADIUS: i32 = cm(170);
 pub const LOTUS_CUP_HEIGHT: i32 = cm(180);
+/// A giant blue mushroom throws a frog off its cap at least this fast.
+pub const BUMPER_SPEED: i32 = mps(2200);
+pub const BUMPER_KEEP_PCT: i32 = 95;
+/// One small hop on landing for each fly caught in the air.
+pub const HOP_UP: i32 = mps(380);
+/// An antlion takes a frog within this share of its pit's radius.
+pub const ANTLION_GRAB_PCT: i32 = 45;
+/// A frog whacked out of an antlion's pit is not taken again while it is
+/// still rising in the first ticks of its flight.
+pub const ANTLION_LEAVE: i32 = secs(2_000);
+/// A whirlpool spins a frog this long, this fast, then throws it.
+pub const WHIRL_TICKS: i32 = secs(1_500);
+pub const WHIRL_TURN: i32 = fx::deg(540) / TICKS_PER_SECOND;
+pub const WHIRL_FLING: i32 = mps(1300);
+pub const WHIRL_UP: i32 = mps(1000);
+pub const WHIRL_REST: i32 = secs(800);
 /// A car's bump: up, on top of its own speed.
 pub const CAR_BUMP_UP: i32 = mps(900);
 
@@ -147,6 +169,9 @@ pub const PICKUP_OVER_PAR: i32 = 5;
 /// The CPU: how long it looks before aiming, and before it swings.
 pub const CPU_THINK: i32 = secs(900);
 pub const CPU_SETTLE: i32 = secs(500);
+/// Imagined shots the CPU tries a tick while it thinks, so no single
+/// frame carries its whole search.
+pub const CPU_SIMS_PER_TICK: i32 = 6;
 /// The CPU's miss on the meter, in degrees, at most, from the middle.
 pub const CPU_MISS: i32 = 22;
 

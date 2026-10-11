@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, VecDeque};
 
 /// Bumped when a message changes shape; a joiner on another version is turned away.
-pub const PROTO: u32 = 1;
+pub const PROTO: u32 = 2;
 /// Ticks between checksums.
 pub const SUM_EVERY: u32 = 60;
 /// Checksums the host keeps to compare against late joiners' reports.

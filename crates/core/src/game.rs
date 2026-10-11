@@ -144,7 +144,9 @@ pub struct Game {
     dyn_values: Vec<i32>,
     dyn_draws: Vec<Vec<u32>>,
     sounds: Vec<&'static str>,
-    says: Vec<(u32, &'static str, usize)>,
+    says: Vec<(u32, &'static str, usize, Option<i32>)>,
+    /// bursts still to come: ticks to wait, kind, where (a firework's shell)
+    later: Vec<(i32, &'static str, V3)>,
     say_serial: u32,
     guide: Vec<V3>,
     guide_key: (i32, i32, usize, V3),
@@ -200,6 +202,7 @@ impl Game {
             dyn_draws: Vec::new(),
             sounds: Vec::new(),
             says: Vec::new(),
+            later: Vec::new(),
             say_serial: 0,
             guide: Vec::new(),
             guide_key: (0, 0, 0, V3::ZERO),
@@ -872,7 +875,26 @@ impl Game {
                 p.step();
             }
             self.particles.retain(|p| p.life > 0);
+            self.fire_later();
             self.update_camera();
+        }
+    }
+
+    /// Bursts whose time has come (a firework's shell).
+    fn fire_later(&mut self) {
+        let mut due = Vec::new();
+        for l in self.later.iter_mut() {
+            l.0 -= 1;
+            if l.0 <= 0 {
+                due.push((l.1, l.2));
+            }
+        }
+        self.later.retain(|l| l.0 > 0);
+        for (kind, at) in due {
+            self.burst(kind, at);
+            if !self.sounds.contains(&"bang") {
+                self.sounds.push("bang");
+            }
         }
     }
 
@@ -964,6 +986,7 @@ impl Game {
             p.step();
         }
         self.particles.retain(|p| p.life > 0);
+        self.fire_later();
         match self.mode {
             Mode::Intro => {
                 self.intro_t += 1;
@@ -1038,7 +1061,14 @@ impl Game {
                 }
                 Note::Say(key, who) => {
                     self.say_serial += 1;
-                    self.says.push((self.say_serial, key, who));
+                    self.says.push((self.say_serial, key, who, None));
+                    if self.says.len() > SAYS_KEPT {
+                        self.says.remove(0);
+                    }
+                }
+                Note::SayN(key, who, n) => {
+                    self.say_serial += 1;
+                    self.says.push((self.say_serial, key, who, Some(n)));
                     if self.says.len() > SAYS_KEPT {
                         self.says.remove(0);
                     }
@@ -1048,7 +1078,26 @@ impl Game {
         }
     }
 
-    fn burst(&mut self, kind: &str, at: V3) {
+    fn burst(&mut self, kind: &'static str, at: V3) {
+        if kind == "firework" {
+            // a rocket up from the bell, and its shell bursts a moment later
+            for k in 0..6 {
+                self.particles.push(Particle {
+                    pos: at.add(v3(0, cm(40) * k, 0)),
+                    vel: v3(0, mps(1400), 0),
+                    life: secs(500) - k * 3,
+                    max: secs(500),
+                    rgb: self.pal.c("spark"),
+                    size: cm(26) - k * cm(3),
+                    glow: ONE,
+                    fall: false,
+                });
+            }
+            let shells = ["spark_a", "spark_b", "spark_c"];
+            let shell = shells[self.prng.range(0, 2) as usize];
+            self.later.push((secs(520), shell, at.add(v3(0, cm(650), 0))));
+            return;
+        }
         let c = |n: &str| self.pal.c(n);
         let (n, colours, speed, up, size, glow, fall, life): (
             i32,
@@ -1139,6 +1188,33 @@ impl Game {
                 ONE / 5,
                 false,
                 secs(450),
+            ),
+            "pop" => (
+                10,
+                vec![c("bubble"), c("white"), c("crown")],
+                mps(400),
+                mps(300),
+                cm(20),
+                ONE,
+                false,
+                secs(450),
+            ),
+            "spark_a" | "spark_b" | "spark_c" => (
+                26,
+                vec![
+                    c(match kind {
+                        "spark_a" => "firework_a",
+                        "spark_b" => "firework_b",
+                        _ => "firework_c",
+                    }),
+                    c("white"),
+                ],
+                mps(1100),
+                mps(200),
+                cm(26),
+                ONE,
+                true,
+                secs(1100),
             ),
             "drops" => (
                 8,
@@ -1243,10 +1319,7 @@ impl Game {
         let k = ONE * pct / 100;
         self.eye = self.eye.lerp(goal_eye, k);
         self.look = self.look.lerp(goal_look, k);
-        let floor = c
-            .ground(self.eye.x, self.eye.z)
-            .max(c.def.hazard.map(|h| h.1).unwrap_or(i32::MIN))
-            + cm(150);
+        let floor = c.surface(self.eye.x, self.eye.z) + cm(150);
         if self.eye.y < floor {
             self.eye.y = floor;
         }
@@ -1283,18 +1356,16 @@ impl Game {
     }
 
     fn leader(&self) -> Option<usize> {
+        // first place now: the fewest strokes over the holes played and this
+        // one so far; nobody leads while two or more are level
         let r = self.round.as_ref()?;
-        if r.players.len() < 2 || r.players[0].scores.is_empty() {
+        if r.players.len() < 2 {
             return None;
         }
-        let pars: i32 = self.plan[..r.players[0].scores.len()]
-            .iter()
-            .map(|&h| self.holes[h].par)
-            .sum();
         let vs: Vec<i32> = r
             .players
             .iter()
-            .map(|p| p.scores.iter().sum::<i32>() - pars)
+            .map(|p| p.scores.iter().sum::<i32>() + p.strokes)
             .collect();
         let best = *vs.iter().min()?;
         let leaders: Vec<usize> = (0..vs.len()).filter(|&i| vs[i] == best).collect();
@@ -1499,6 +1570,7 @@ impl Game {
                     "holed": q.holed,
                     "active": i == r.active,
                     "flies": q.flies,
+                    "points": q.points + q.point_scores.iter().sum::<i32>(),
                     "vs": vs_par(q.scores.iter().sum::<i32>() - pars),
                     "on": screen.is_some() && !q.holed,
                     "x": pct(screen.map(|s| s.0).unwrap_or(0)),
@@ -1510,9 +1582,9 @@ impl Game {
         let says: Vec<Value> = self
             .says
             .iter()
-            .map(|(id, key, who)| {
+            .map(|(id, key, who, n)| {
                 let q = &r.players[*who];
-                json!({ "id": id, "key": key, "who": self.frogs[q.frog].name, "colour": hex(self.frogs[q.frog].skin) })
+                json!({ "id": id, "key": key, "who": self.frogs[q.frog].name, "colour": hex(self.frogs[q.frog].skin), "n": n })
             })
             .collect();
         let meter_on = matches!(r.phase, Phase::Aim | Phase::Meter | Phase::Swing) && self.mode == Mode::Play;
@@ -1540,6 +1612,7 @@ impl Game {
             "cpu": p.cpu,
             "strokes": p.strokes,
             "flies": p.flies,
+            "points": p.points + p.point_scores.iter().sum::<i32>(),
             "tongue": p.flies >= FLIES_FOR_TONGUE,
             "jumps": p.jumps,
             "wings": if p.body.wings > 0 { json!(tenths(p.body.wings * 10 / TICKS_PER_SECOND)) } else { Value::Null },
@@ -1678,6 +1751,7 @@ impl Game {
                         "total": total,
                         "vs": vs_par(total - pars),
                         "flies": p.flies,
+                        "points": p.point_scores.iter().sum::<i32>(),
                     }),
                 )
             })
@@ -1791,6 +1865,28 @@ const NAMED_COLOURS: &[&str] = &[
     "sign_a",
     "sign_b",
     "sign_c",
+    "pit",
+    "bumper_cap",
+    "bumper_spot",
+    "bumper_stem",
+    "bumper_gill",
+    "bubble_star",
+    "firework_a",
+    "firework_b",
+    "firework_c",
+    "snail_shell",
+    "snail_shell_dark",
+    "snail_body",
+    "antlion",
+    "antlion_jaw",
+    "whirl",
+    "toadstool_cap",
+    "glowcap",
+    "glowcap_b",
+    "puffball",
+    "shelf",
+    "sand_dark",
+    "water_jet",
 ];
 
 fn smooth(t: i32) -> i32 {
@@ -2000,7 +2096,7 @@ pub(crate) mod tests {
         frames(&mut g, 2, 0);
         let h: Value = serde_json::from_str(&g.hud_json()).unwrap();
         assert_eq!(h["player"]["name"], "Lime");
-        assert_eq!(h["hole"]["par"], 3);
+        assert_eq!(h["hole"]["par"], 5);
         assert_eq!(h["meter"]["show"], true);
         assert!(h["meter"]["bar"].as_str().unwrap().starts_with("M "));
         assert_eq!(h["players"].as_array().unwrap().len(), 3);
@@ -2036,7 +2132,7 @@ pub(crate) mod tests {
         }
         assert_eq!(g.mode, Mode::Final);
         let s: Value = serde_json::from_str(&g.screen_json()).unwrap();
-        assert_eq!(s["rows"][0]["scores"].as_array().unwrap().len(), 4);
+        assert_eq!(s["rows"][0]["scores"].as_array().unwrap().len(), 5);
         assert!(!s["winners"].as_array().unwrap().is_empty());
         assert!(
             g.best.is_empty() && g.best_round.is_none(),

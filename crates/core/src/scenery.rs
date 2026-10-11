@@ -3,10 +3,11 @@
 //! and every prop. Shapes are placed with `put`, which every drawing file
 //! shares.
 
-use crate::content::{Palette, Rgb};
+use crate::balance::cm;
+use crate::content::{Palette, Region, Rgb};
 use crate::course::Course;
 use crate::fx::{self, deg, int, ONE};
-use crate::geom::{v3, Affine, V3};
+use crate::geom::{facing, v3, Affine, V3};
 use crate::mesh::Mesh;
 use crate::render::{shade, Batch, PASS_FACADE, PASS_SOLID};
 use crate::rng::Rng;
@@ -87,16 +88,63 @@ pub fn build(c: &Course, pal: &Palette) -> Batch {
             PASS_SOLID,
         );
     }
-    if let Some((_, level)) = c.def.hazard {
-        let mid = v3((x0 + x1) / 2, level, (z0 + z1) / 2);
-        let glow = ONE * t.hazard_glow / 100;
-        b.push(
-            Mesh::Ground,
-            &at(mid, 0, v3(x1 - x0, ONE, z1 - z0)),
-            t.hazard,
-            glow,
-            PASS_SOLID,
-        );
+    // rivers, ponds and lava: a flat surface wherever each lies; the ground
+    // covers it where it is higher
+    for w in &c.def.waters {
+        let lava = w.kind == crate::content::HazardKind::Lava;
+        let (colour, glow) = if lava {
+            (pal.c("lava"), ONE * t.hazard_glow.max(60) / 100)
+        } else {
+            (t.water, 0)
+        };
+        let bank = crate::terrain::BANK * 2;
+        match w.region {
+            Region::All => {
+                let mid = v3((x0 + x1) / 2, w.level, (z0 + z1) / 2);
+                b.push(
+                    Mesh::Ground,
+                    &at(mid, 0, v3(x1 - x0, ONE, z1 - z0)),
+                    colour,
+                    glow,
+                    PASS_SOLID,
+                );
+            }
+            Region::Line { a, b: bb, w: wide } => {
+                let d = v3(bb.0 - a.0, 0, bb.1 - a.1);
+                let yaw = crate::geom::yaw_pitch_of(d).0;
+                let mid = v3((a.0 + bb.0) / 2, w.level, (a.1 + bb.1) / 2);
+                b.push(
+                    Mesh::Ground,
+                    &at(mid, yaw, v3(wide + ONE * 3, ONE, d.len() + wide / 2)),
+                    colour,
+                    glow,
+                    PASS_SOLID,
+                );
+            }
+            Region::Disc { x, z, r } => {
+                b.push(
+                    Mesh::Cyl,
+                    &at(
+                        v3(x, w.level - cm(5), z),
+                        0,
+                        v3(2 * r + bank, cm(10), 2 * r + bank),
+                    ),
+                    colour,
+                    glow,
+                    PASS_SOLID,
+                );
+            }
+        }
+    }
+    for f in &c.def.falls {
+        // lava falls as lava: the pool at its foot says which
+        let lava = crate::terrain::water_at(&c.def, f.x, f.z, f.bottom - ONE)
+            .map(|w| w.kind == crate::content::HazardKind::Lava)
+            .unwrap_or(false);
+        waterfall(&mut b, pal, if lava { pal.c("lava") } else { t.water }, f);
+    }
+    for r in &c.roofs {
+        rock_bridge(&mut b, pal, t, r);
     }
     // the tee: a mat
     put(
@@ -113,6 +161,102 @@ pub fn build(c: &Course, pal: &Palette) -> Batch {
         prop(&mut b, pal, c, &p.kind, p.at, p.size, fx::deg(p.yaw));
     }
     b
+}
+
+/// A sheet of falling water over a cliff, with foam at its foot and stripes
+/// of light down it.
+fn waterfall(b: &mut Batch, pal: &Palette, water: Rgb, f: &crate::content::Fall) {
+    let h = (f.top - f.bottom).max(ONE);
+    let yaw = deg(f.yaw);
+    let mid = v3(f.x, (f.top + f.bottom) / 2, f.z);
+    b.push(
+        Mesh::Cube,
+        &at(mid, yaw, v3(f.w, h, cm(60))),
+        water,
+        ONE / 5,
+        PASS_SOLID,
+    );
+    let across = crate::geom::right_of(yaw);
+    let front = facing(yaw, 0).scale(cm(35));
+    let n = (f.w / cm(80)).max(2);
+    for k in 0..n {
+        let off = across.scale(f.w * (2 * k + 1 - n) / (2 * n));
+        let stripe_h = h * (40 + (k * 37) % 50) / 100;
+        let top = v3(mid.x, f.top - (k * 53 % 30) * h / 100, mid.z)
+            .add(off)
+            .add(front);
+        b.push(
+            Mesh::Cube,
+            &at(top.sub(v3(0, stripe_h / 2, 0)), yaw, v3(cm(18), stripe_h, cm(8))),
+            pal.c("water_jet"),
+            ONE / 2,
+            PASS_SOLID,
+        );
+    }
+    for k in 0..5 {
+        let off = across.scale(f.w * (k - 2) / 5);
+        let s = cm(160) + k % 2 * cm(70);
+        b.push(
+            Mesh::Blob,
+            &at(
+                v3(f.x, f.bottom + cm(30), f.z).add(off).add(front.scale(ONE * 3)),
+                0,
+                v3(s, s * 2 / 3, s),
+            ),
+            pal.c("splash"),
+            ONE / 3,
+            PASS_SOLID,
+        );
+    }
+}
+
+/// A tunnel's roof: a slab of rock over the cut, with arch stones at each mouth.
+fn rock_bridge(b: &mut Batch, pal: &Palette, t: &crate::content::Theme, r: &crate::course::Roof) {
+    let size = r.max.sub(r.min);
+    let mid = v3(
+        (r.min.x + r.max.x) / 2,
+        (r.min.y + r.max.y) / 2,
+        (r.min.z + r.max.z) / 2,
+    );
+    put(b, Mesh::Cube, &at(mid, 0, size), t.rock, true);
+    // the underside, in shadow
+    b.push(
+        Mesh::Cube,
+        &at(
+            v3(mid.x, r.min.y + cm(5), mid.z),
+            0,
+            v3(size.x - cm(40), cm(12), size.z - cm(20)),
+        ),
+        shade(t.rock, 55),
+        0,
+        PASS_SOLID,
+    );
+    for z in [r.min.z, r.max.z] {
+        let n = 7;
+        for k in 0..n {
+            let x = r.min.x + size.x * k / (n - 1);
+            let stone = v3(x, r.min.y + cm(40), z);
+            put(
+                b,
+                Mesh::Blob,
+                &at(stone, deg(k * 40), v3(cm(180), cm(140), cm(160))),
+                shade(t.rock, 85 + (k % 3) * 8),
+                true,
+            );
+        }
+        // pillars down each side of the mouth, to the floor
+        for x in [r.min.x + cm(70), r.max.x - cm(70)] {
+            let hgt = r.min.y - r.floor;
+            put(
+                b,
+                Mesh::Cube,
+                &at(v3(x, r.floor + hgt / 2, z), 0, v3(cm(140), hgt, cm(160))),
+                shade(t.rock, 75),
+                true,
+            );
+        }
+    }
+    let _ = pal;
 }
 
 fn building(b: &mut Batch, pal: &Palette, min: V3, max: V3, wall: Rgb, c: &Course) {
@@ -680,6 +824,119 @@ fn prop(b: &mut Batch, pal: &Palette, c: &Course, kind: &str, p: V3, size: i32, 
                 Mesh::Ring,
                 &at(p.add(v3(0, sz(10), 0)), 0, v3(sz(1260), sz(60), sz(1260))),
                 shade(pal.c("fountain"), 85),
+                true,
+            );
+        }
+        "toadstool" => {
+            put(
+                b,
+                Mesh::Cyl,
+                &at(p.add(v3(0, sz(35), 0)), 0, v3(sz(30), sz(70), sz(30))),
+                pal.c("mushroom_stem"),
+                true,
+            );
+            put(
+                b,
+                Mesh::Sphere,
+                &at(p.add(v3(0, sz(75), 0)), yaw, v3(sz(110), sz(60), sz(110))),
+                pal.c("toadstool_cap"),
+                true,
+            );
+            for k in 0..4 {
+                let q = p
+                    .add(facing(yaw + deg(90) * k, 0).scale(sz(30)))
+                    .add(v3(0, sz(95), 0));
+                put(
+                    b,
+                    Mesh::Sphere,
+                    &at(q, 0, v3(sz(20), sz(10), sz(20))),
+                    pal.c("mushroom_spot"),
+                    false,
+                );
+            }
+        }
+        "glowcap" => {
+            let mut rng = Rng::new((p.x ^ (p.z << 2)) as u64);
+            for _ in 0..5 {
+                let q = p.add(v3(sz(rng.range(-80, 80)), 0, sz(rng.range(-80, 80))));
+                let h = sz(rng.range(30, 80));
+                let colour = if rng.chance(50) {
+                    pal.c("glowcap")
+                } else {
+                    pal.c("glowcap_b")
+                };
+                put(
+                    b,
+                    Mesh::Cyl,
+                    &at(q.add(v3(0, h / 2, 0)), 0, v3(sz(10), h, sz(10))),
+                    pal.c("mushroom_stem"),
+                    false,
+                );
+                b.inked(
+                    Mesh::Sphere,
+                    &at(q.add(v3(0, h, 0)), 0, v3(sz(40), sz(22), sz(40))),
+                    colour,
+                    ONE * 6 / 10,
+                );
+            }
+        }
+        "puffball" => {
+            for (dx, s2) in [(0, 120), (90, 70), (-70, 55)] {
+                let q = p.add(crate::geom::right_of(yaw).scale(sz(dx)));
+                put(
+                    b,
+                    Mesh::Sphere,
+                    &at(
+                        q.add(v3(0, sz(s2) * 4 / 10, 0)),
+                        0,
+                        v3(sz(s2), sz(s2) * 85 / 100, sz(s2)),
+                    ),
+                    pal.c("puffball"),
+                    true,
+                );
+            }
+        }
+        "shelf_tree" => {
+            put(
+                b,
+                Mesh::Cyl,
+                &at(p.add(v3(0, sz(450), 0)), yaw, v3(sz(110), sz(900), sz(110))),
+                pal.c("bark_dark"),
+                true,
+            );
+            for k in 0..5 {
+                let a = yaw + deg(130) * k;
+                let q = p.add(facing(a, 0).scale(sz(70))).add(v3(0, sz(150 + k * 140), 0));
+                put(
+                    b,
+                    Mesh::Cyl,
+                    &at(q, a, v3(sz(150), sz(25), sz(150))),
+                    pal.c("shelf"),
+                    true,
+                );
+            }
+            put(
+                b,
+                Mesh::Blob,
+                &at(p.add(v3(0, sz(950), 0)), yaw, v3(sz(520), sz(320), sz(520))),
+                g(1),
+                true,
+            );
+        }
+        "fungus_tree" => {
+            // a giant mushroom that is only scenery: violet, out of play
+            put(
+                b,
+                Mesh::Cyl,
+                &at(p.add(v3(0, sz(600), 0)), yaw, v3(sz(160), sz(1200), sz(160))),
+                pal.c("bumper_stem"),
+                true,
+            );
+            put(
+                b,
+                Mesh::Sphere,
+                &at(p.add(v3(0, sz(1250), 0)), yaw, v3(sz(1100), sz(600), sz(1100))),
+                pal.c("glowcap_b"),
                 true,
             );
         }

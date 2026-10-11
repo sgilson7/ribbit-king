@@ -125,17 +125,24 @@ def run(p, engine, origin):
         page.wait_for_selector("body[data-mode='play']", state="attached", timeout=15000)
     check(True, "the host tees off and every browser plays")
 
-    for _ in range(40):
+    # tap until four strokes are in (one each), or two minutes have passed:
+    # on a software renderer four pages draw few frames a second
+    def strokes_in(text):
+        return sum(int(n) for n in re.findall(r"(\d+)\s*✿?\s*$", text, re.M))
+
+    for _ in range(240):
         for page in pages:
             page.keyboard.press("Space")
         pages[0].wait_for_timeout(450)
-    pages[0].wait_for_timeout(6000)
+        if strokes_in(pages[0].inner_text("#h-standings")) >= 4:
+            break
+    pages[0].wait_for_timeout(8000)
     standings = [page.inner_text("#h-standings") for page in pages]
     strokes = [page.inner_text("#p-stroke") for page in pages]
     print("   standings:", standings[0].replace("\n", " | "))
     check(len(set(standings)) == 1, "all four browsers show the same standings")
     check(len(set(strokes)) == 1, f"and the same stroke for whoever is up {strokes}")
-    played = sum(int(n) for n in re.findall(r"(\d+)\s*✿?\s*$", standings[0], re.M))
+    played = strokes_in(standings[0])
     check(played >= 4, f"strokes were played ({played})")
     badges = [page.inner_text("#h-online") for page in pages]
     check(COPY["online_desync"] not in badges, f"no browser reports the copies disagree {badges}")

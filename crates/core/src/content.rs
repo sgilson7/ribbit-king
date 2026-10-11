@@ -128,6 +128,8 @@ pub struct Theme {
     pub rock: Rgb,
     pub far: Rgb,
     pub hazard: Rgb,
+    /// rivers and ponds (the hazard is lava on a lava course)
+    pub water: Rgb,
     /// how brightly the hazard's surface glows, out of 100 (lava glows)
     pub hazard_glow: i32,
     pub paints: BTreeMap<String, Rgb>,
@@ -152,6 +154,8 @@ struct ThemeFile {
     rock: String,
     far: String,
     hazard: String,
+    #[serde(default)]
+    water: Option<String>,
     hazard_glow: i32,
     #[serde(default)]
     paints: BTreeMap<String, String>,
@@ -202,6 +206,7 @@ impl Palette {
                 rock: c(&t.rock)?,
                 far: c(&t.far)?,
                 hazard: c(&t.hazard)?,
+                water: c(t.water.as_deref().unwrap_or(&t.hazard))?,
                 hazard_glow: t.hazard_glow,
                 paints,
                 walls: list(&t.walls)?,
@@ -240,6 +245,57 @@ pub enum ItemKind {
     Wings,
 }
 
+/// Where a body of water (or lava) lies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Region {
+    /// a river: along a line, this wide
+    Line { a: Xz, b: Xz, w: i32 },
+    /// a pond: round
+    Disc { x: i32, z: i32, r: i32 },
+    /// the whole hole, wherever the ground is below its level (lava)
+    All,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Water {
+    pub kind: HazardKind,
+    pub region: Region,
+    pub level: i32,
+}
+
+/// A waterfall, drawn where a river drops: where, from what height to what
+/// height, how wide, facing which way (degrees).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Fall {
+    pub x: i32,
+    pub z: i32,
+    pub top: i32,
+    pub bottom: i32,
+    pub w: i32,
+    pub yaw: i32,
+}
+
+/// A rock bridge over a cut: the cut runs along z at x, from z0 to z1, this
+/// wide; the roof starts this far above the cut's floor and is this thick.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Tunnel {
+    pub x: i32,
+    pub z0: i32,
+    pub z1: i32,
+    pub w: i32,
+    pub clearance: i32,
+    pub thickness: i32,
+}
+
+/// A snail that crawls to and fro along a line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Snail {
+    pub a: Xz,
+    pub b: Xz,
+    pub speed: i32,
+    pub size: i32,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
     /// a rounded hill (or, with a negative height, a hollow)
@@ -253,6 +309,16 @@ pub enum Shape {
         w: i32,
         h: i32,
     },
+    /// flat on top to `r`, then a cliff down over `edge`
+    Mesa {
+        x: i32,
+        z: i32,
+        r: i32,
+        h: i32,
+        edge: i32,
+    },
+    /// a long flat-topped terrace along a line, `w` wide, cliffs over `edge`
+    Bench { a: Xz, b: Xz, w: i32, h: i32, edge: i32 },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -284,14 +350,11 @@ pub struct Scatter {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// A spider web strung flat across a pit in the ground, like a trampoline.
 pub struct Web {
     pub x: i32,
     pub z: i32,
-    /// above the ground under it
-    pub height: i32,
     pub r: i32,
-    /// a push along the ground on top of the bounce
-    pub kick: (i32, i32),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -313,7 +376,18 @@ pub struct HoleDef {
     pub bounds: [i32; 4],
     pub base: i32,
     pub rough: (i32, i32),
-    pub hazard: Option<(HazardKind, i32)>,
+    pub waters: Vec<Water>,
+    pub falls: Vec<Fall>,
+    pub tunnels: Vec<Tunnel>,
+    /// giant blue mushrooms: x, z, cap radius, cap height
+    pub bumpers: Vec<[i32; 4]>,
+    /// point bubbles: x, z, height above the ground (or water), points
+    pub bubbles: Vec<[i32; 4]>,
+    pub snails: Vec<Snail>,
+    /// antlion pits: x, z, radius
+    pub antlions: Vec<[i32; 3]>,
+    /// whirlpools: x, z, radius
+    pub whirlpools: Vec<[i32; 3]>,
     pub tee: (i32, i32),
     pub lotus: (i32, i32),
     pub shapes: Vec<Shape>,
@@ -379,6 +453,21 @@ struct LaneFile {
 }
 
 #[derive(Deserialize)]
+struct WaterFile {
+    #[serde(default = "water_kind")]
+    kind: String,
+    #[serde(default)]
+    line: Option<[i32; 5]>,
+    #[serde(default)]
+    disc: Option<[i32; 3]>,
+    level: i32,
+}
+
+fn water_kind() -> String {
+    "water".into()
+}
+
+#[derive(Deserialize)]
 struct HoleFile {
     id: String,
     name: String,
@@ -390,6 +479,26 @@ struct HoleFile {
     rough: [i32; 2],
     #[serde(default)]
     hazard: Option<(String, i32)>,
+    #[serde(default)]
+    waters: Vec<WaterFile>,
+    #[serde(default)]
+    falls: Vec<[i32; 6]>,
+    #[serde(default)]
+    mesas: Vec<[i32; 5]>,
+    #[serde(default)]
+    benches: Vec<[i32; 7]>,
+    #[serde(default)]
+    tunnels: Vec<[i32; 6]>,
+    #[serde(default)]
+    bumpers: Vec<[i32; 4]>,
+    #[serde(default)]
+    bubbles: Vec<[i32; 4]>,
+    #[serde(default)]
+    snails: Vec<[i32; 6]>,
+    #[serde(default)]
+    antlions: Vec<[i32; 3]>,
+    #[serde(default)]
+    whirlpools: Vec<[i32; 3]>,
     tee: [i32; 2],
     lotus: [i32; 2],
     #[serde(default)]
@@ -405,7 +514,7 @@ struct HoleFile {
     #[serde(default)]
     pads: Vec<[i32; 3]>,
     #[serde(default)]
-    webs: Vec<[i32; 6]>,
+    webs: Vec<[i32; 3]>,
     #[serde(default)]
     mushrooms: Vec<[i32; 2]>,
     #[serde(default)]
@@ -444,6 +553,11 @@ pub const PROP_KINDS: &[&str] = &[
     "volcano",
     "tower",
     "fountain",
+    "toadstool",
+    "glowcap",
+    "puffball",
+    "shelf_tree",
+    "fungus_tree",
 ];
 
 pub fn parse_course(text: &str, palette: &Palette) -> Result<Vec<HoleDef>, String> {
@@ -463,17 +577,39 @@ pub fn parse_course(text: &str, palette: &Palette) -> Result<Vec<HoleDef>, Strin
         if !inside(h.tee[0], h.tee[1]) || !inside(h.lotus[0], h.lotus[1]) {
             return Err(err("the tee and the lotus must be inside the bounds"));
         }
-        let hazard = match &h.hazard {
-            None => None,
-            Some((k, level)) => Some((
-                match k.as_str() {
-                    "water" => HazardKind::Water,
-                    "lava" => HazardKind::Lava,
-                    _ => return Err(err(&format!("unknown hazard {k}"))),
-                },
-                cm(*level),
-            )),
+        let kind_of = |k: &str| match k {
+            "water" => Ok(HazardKind::Water),
+            "lava" => Ok(HazardKind::Lava),
+            _ => Err(err(&format!("unknown hazard {k}"))),
         };
+        let mut waters = Vec::new();
+        if let Some((k, level)) = &h.hazard {
+            waters.push(Water {
+                kind: kind_of(k)?,
+                region: Region::All,
+                level: cm(*level),
+            });
+        }
+        for w in &h.waters {
+            let region = match (w.line, w.disc) {
+                (Some([ax, az, bx, bz, ww]), None) => Region::Line {
+                    a: p(ax, az),
+                    b: p(bx, bz),
+                    w: cm(ww),
+                },
+                (None, Some([x, z, r])) => Region::Disc {
+                    x: cm(x),
+                    z: cm(z),
+                    r: cm(r),
+                },
+                _ => return Err(err("a water is a line or a disc")),
+            };
+            waters.push(Water {
+                kind: kind_of(&w.kind)?,
+                region,
+                level: cm(w.level),
+            });
+        }
         let mut shapes = Vec::new();
         for [x, z, r, hh] in &h.hills {
             shapes.push(Shape::Hill {
@@ -497,6 +633,24 @@ pub fn parse_course(text: &str, palette: &Palette) -> Result<Vec<HoleDef>, Strin
                 b: p(*bx, *bz),
                 w: cm(*w),
                 h: cm(*hh),
+            });
+        }
+        for [x, z, r, hh, e] in &h.mesas {
+            shapes.push(Shape::Mesa {
+                x: cm(*x),
+                z: cm(*z),
+                r: cm(*r),
+                h: cm(*hh),
+                edge: cm(*e),
+            });
+        }
+        for [ax, az, bx, bz, w, hh, e] in &h.benches {
+            shapes.push(Shape::Bench {
+                a: p(*ax, *az),
+                b: p(*bx, *bz),
+                w: cm(*w),
+                h: cm(*hh),
+                edge: cm(*e),
             });
         }
         let theme = &palette.themes[&h.theme];
@@ -573,7 +727,49 @@ pub fn parse_course(text: &str, palette: &Palette) -> Result<Vec<HoleDef>, Strin
             bounds: h.bounds.map(cm),
             base: cm(h.base),
             rough: (cm(h.rough[0]), cm(h.rough[1].max(100))),
-            hazard,
+            waters,
+            falls: h
+                .falls
+                .iter()
+                .map(|[x, z, t, b, w, y]| Fall {
+                    x: cm(*x),
+                    z: cm(*z),
+                    top: cm(*t),
+                    bottom: cm(*b),
+                    w: cm(*w),
+                    yaw: *y,
+                })
+                .collect(),
+            tunnels: h
+                .tunnels
+                .iter()
+                .map(|[x, z0, z1, w, c, t]| Tunnel {
+                    x: cm(*x),
+                    z0: cm(*z0.min(z1)),
+                    z1: cm(*z0.max(z1)),
+                    w: cm(*w),
+                    clearance: cm(*c),
+                    thickness: cm(*t),
+                })
+                .collect(),
+            bumpers: h.bumpers.iter().map(|b| b.map(cm)).collect(),
+            bubbles: h
+                .bubbles
+                .iter()
+                .map(|[x, z, hh, pts]| [cm(*x), cm(*z), cm(*hh), *pts])
+                .collect(),
+            snails: h
+                .snails
+                .iter()
+                .map(|[ax, az, bx, bz, sp, sz]| Snail {
+                    a: p(*ax, *az),
+                    b: p(*bx, *bz),
+                    speed: mps(*sp),
+                    size: cm(*sz),
+                })
+                .collect(),
+            antlions: h.antlions.iter().map(|a| a.map(cm)).collect(),
+            whirlpools: h.whirlpools.iter().map(|a| a.map(cm)).collect(),
             tee: p(h.tee[0], h.tee[1]),
             lotus: p(h.lotus[0], h.lotus[1]),
             shapes,
@@ -587,12 +783,10 @@ pub fn parse_course(text: &str, palette: &Palette) -> Result<Vec<HoleDef>, Strin
             webs: h
                 .webs
                 .iter()
-                .map(|[x, z, hh, r, kx, kz]| Web {
+                .map(|[x, z, r]| Web {
                     x: cm(*x),
                     z: cm(*z),
-                    height: cm(*hh),
                     r: cm(*r),
-                    kick: (mps(*kx), mps(*kz)),
                 })
                 .collect(),
             mushrooms: h.mushrooms.iter().map(|[x, z]| p(*x, *z)).collect(),
@@ -649,11 +843,12 @@ pub(crate) mod tests {
         assert_eq!(frogs.len(), 8);
         let pal = Palette::parse(f.palette).unwrap();
         let holes = parse_course(f.course, &pal).unwrap();
-        assert_eq!(holes.len(), 4);
+        assert_eq!(holes.len(), 5);
         assert_eq!(
             holes.iter().map(|h| h.theme.as_str()).collect::<Vec<_>>(),
-            ["swamp", "desert", "city", "volcano"]
+            ["swamp", "desert", "fungus", "city", "volcano"]
         );
+        assert!(holes.iter().all(|h| h.par >= 5), "every hole is at least a par 5");
     }
 
     #[test]

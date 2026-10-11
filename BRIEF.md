@@ -16,6 +16,15 @@
 
 Done means: up to four people, each in their own browser, play one round together. They meet by a code, the way Floodline and Vagrancy do, with no server of ours. The game stays deployed on Pages. The earlier approvals (public repository, Pages, website) stand.
 
+## Round 3: playtest changes (Sam, 10 October 2026, from the main designer and players)
+
+> the online works really well we played a 3 player game all the way through. here are the changes the main designer and players gave during playtesting:
+>
+> Each stage should be large and wide, and consists of varied plateaus, hills, cliffs, tunnels. There should be three distinct routes to take through each golf course, and they should cross over one another to encourage players crossing paths. Each stage should be a minimum of a par 5 in length. Powerups should be located around the fairway and in the rough to encourage exploration of the courses various geographic features. The spider webs should be embedded into the ground of the maps. The spider webs should be of various sizes ranging from extra large to medium diameters. There should be an animation like the ocarina of time spider web puzzle in the deku tree that plays when the frogs bounce off the spider web. There should be bubbles with points scattered around the courses to collect, and this score should be recorded separately from the amount of strokes. There should be a small firework animation that shoots from the top of the bell next to the catapult when the player scores a perfect stroke. Frogs are able to swim in water hazards and it does not count as an extra stroke, instead a lilypad will appear underneath where they land for the next turn. The map design should incorporate rivers, waterfalls, and giant bouncy mushrooms into the design. There should also be a course that features a variety of fungus designs in its motif. Collecting flies will increase the amount of small bounces that occur when the frog lands on the ground next. One tiny bounce per fly. The frog currently in first place will have a small crown rendered on their model.
+> There are blue mushrooms and they should be much larger than the red explosive ones. The blue mushrooms function like pinball machine bumpers and bounce the frog away.
+>
+> heres more: There are moving snail obstacles in the swamp course that will block your frog bounces. There are antlion pits in the desert oasis map that will grab your frog and end your turn. There are whirlpools in the water features of the swamp map that will spin your frog around and change it's direction.
+
 ## Done means
 
 A 3D browser game, deployed on GitHub Pages and listed on sgilson7.github.io, in which up to four frogs (people or CPU) play a round on four themed holes with every mechanic above, built as a Builder project whose `./scripts/check.sh` passes.

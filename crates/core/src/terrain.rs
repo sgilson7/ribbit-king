@@ -6,7 +6,7 @@
 //! height lookup and for the mesh, so a frog rolls on exactly the ground it
 //! is drawn on.
 
-use crate::content::{HoleDef, Paint, Rgb, Shape, Theme};
+use crate::content::{HoleDef, Paint, Region, Rgb, Shape, Theme, Water};
 use crate::fx::{self, ONE};
 use crate::geom::{v3, V3};
 use crate::render::mix;
@@ -85,7 +85,7 @@ impl Terrain {
             for i in 0..nx {
                 let x = x0 + i as i32 * CELL;
                 let z = z0 + j as i32 * CELL;
-                heights.push(shaped_height(hole, x, z));
+                heights.push(carved(hole, x, z, shaped_height(hole, x, z)));
             }
         }
         Terrain {
@@ -207,12 +207,112 @@ fn shaped_height(hole: &HoleDef, x: i32, z: i32) -> i32 {
                 fx::mul(hh, bump((d - r / 2).max(0), r / 2))
             }
             Shape::Ridge { a, b, w, h: hh } => fx::mul(hh, bump(seg_dist(x, z, a, b), w)),
+            Shape::Mesa {
+                x: sx,
+                z: sz,
+                r,
+                h: hh,
+                edge,
+            } => fx::mul(hh, cliff(dist(x - sx, z - sz), r, edge)),
+            Shape::Bench { a, b, w, h: hh, edge } => fx::mul(hh, cliff(seg_dist(x, z, a, b), w / 2, edge)),
         };
     }
     let (amp, scale) = hole.rough;
     if amp > 0 {
         let n = noise(x, z, scale, seed_of(&hole.id)) - ONE / 2;
         h += fx::mul(n, amp * 2);
+    }
+    h
+}
+
+/// 1 out to `r`, then down to 0 over `edge`: a flat top and a cliff.
+fn cliff(d: i32, r: i32, edge: i32) -> i32 {
+    if d <= r {
+        return ONE;
+    }
+    if d >= r + edge || edge <= 0 {
+        return 0;
+    }
+    smooth(ONE - fx::div(d - r, edge))
+}
+
+/// How far the banks of a river or pond rise per metre out from the water.
+const BANK_SLOPE: i32 = ONE * 6 / 10;
+/// A river's or pond's bed is this far under its surface.
+const BED_DEPTH: i32 = ONE * 16 / 10;
+/// How far past the water's edge a surface still counts (its banks).
+pub const BANK: i32 = 5 * ONE;
+const PIT_DEPTH: i32 = ONE * 28 / 10;
+const ANTLION_DEPTH: i32 = ONE * 26 / 10;
+/// A tunnel's cut runs this far past each end of its roof, rising out.
+pub const TUNNEL_APPROACH: i32 = 30 * ONE;
+
+/// Distance from a point to a water's edge (negative inside), or `None`
+/// for water that covers the whole hole.
+pub fn water_edge(w: &Water, x: i32, z: i32) -> Option<i32> {
+    match w.region {
+        Region::Line { a, b, w: wide } => Some(seg_dist(x, z, a, b) - wide / 2),
+        Region::Disc { x: wx, z: wz, r } => Some(dist(x - wx, z - wz) - r),
+        Region::All => None,
+    }
+}
+
+/// No river or pond is deeper than this: ground further below a surface
+/// is under some other water, or none (the foot of a waterfall is not in
+/// the river at its top).
+const MAX_DEPTH: i32 = 4 * ONE;
+
+/// The water over ground at this height at a point, if any: of the waters
+/// whose banks reach the point and whose surface is above the ground there,
+/// the lowest. Lava that covers the whole hole has no depth limit.
+pub fn water_at(hole: &HoleDef, x: i32, z: i32, ground: i32) -> Option<&Water> {
+    hole.waters
+        .iter()
+        .filter(|w| match water_edge(w, x, z) {
+            Some(e) => e < BANK && w.level > ground && w.level - ground <= MAX_DEPTH,
+            None => w.level > ground,
+        })
+        .min_by_key(|w| w.level)
+}
+
+/// The ground before anything is carved into it: rivers, tunnels and pits
+/// are cut below this.
+pub fn rest_height(hole: &HoleDef, x: i32, z: i32) -> i32 {
+    shaped_height(hole, x, z)
+}
+
+/// Rivers and ponds, tunnels, the pits under webs and the antlions' funnels,
+/// cut into the shaped ground: each lowers it, never raises it.
+fn carved(hole: &HoleDef, x: i32, z: i32, mut h: i32) -> i32 {
+    for w in &hole.waters {
+        if let Some(e) = water_edge(w, x, z) {
+            let bed = w.level - BED_DEPTH;
+            h = h.min(bed + fx::mul(e.max(0), BANK_SLOPE).min(64 * ONE));
+        }
+    }
+    for t in &hole.tunnels {
+        let dx = (x - t.x).abs() - t.w / 2;
+        let dz = (t.z0 - TUNNEL_APPROACH - z)
+            .max(z - t.z1 - TUNNEL_APPROACH)
+            .max(0);
+        if dx < 12 * ONE && dz < 40 * ONE {
+            let floor = hole.base + fx::mul(dx.max(0), 2 * ONE) + fx::mul(dz, ONE * 4 / 10);
+            h = h.min(floor);
+        }
+    }
+    for wb in &hole.webs {
+        let d = dist(x - wb.x, z - wb.z);
+        if d < wb.r {
+            let rim = shaped_height(hole, wb.x, wb.z);
+            h = h.min(rim - ONE / 4 - fx::mul(PIT_DEPTH, ONE - fx::div(d, wb.r)));
+        }
+    }
+    for &[ax, az, r] in &hole.antlions {
+        let d = dist(x - ax, z - az);
+        if d < r {
+            let rim = shaped_height(hole, ax, az);
+            h = h.min(rim - fx::mul(ANTLION_DEPTH, ONE - fx::div(d, r)));
+        }
     }
     h
 }
@@ -231,7 +331,14 @@ fn painted(paints: &[Paint], x: i32, z: i32) -> Option<&Paint> {
 }
 
 fn ground_colour(hole: &HoleDef, theme: &Theme, p: V3, n: V3) -> Rgb {
-    let level = hole.hazard.map(|(_, l)| l);
+    let level = water_at(hole, p.x, p.z, p.y).map(|w| w.level);
+    if hole
+        .antlions
+        .iter()
+        .any(|&[ax, az, r]| dist(p.x - ax, p.z - az) < r)
+    {
+        return theme.shore;
+    }
     if let Some(l) = level {
         if p.y < l {
             return theme.bed;

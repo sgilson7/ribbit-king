@@ -8,13 +8,20 @@ It is a fan game after Bandai's *Ribbit King* (GameCube, 2003), built from a des
 
 - **The swing.** Aim with A and D, set the mallet's power with W and S, and change the loft with Q. A dotted arc shows where a perfect hit at that power first lands. Press Space and a needle starts round a circular meter. Press Space again to whack. The gold notch in the middle of the red power bar is a perfect shot: full power, dead straight, and a little extra. Elsewhere on the bar is weaker, and an early hit hooks left while a late one slices right. Off the bar is a whiff.
 - **In the air.** You fly the frog: W A S D steer it, relative to the camera. Drag with the mouse to look around.
-- **Power-ups.** Extra jumps (Space in the air, carry up to three). Wings, which give a glide after Mario 64's wing cap: A and D bank, W dives, S climbs. Explosive mushrooms, which blast the frog up and away when it touches one.
+- **Power-ups**, beside the fairways and out in the rough. Extra jumps (Space in the air, carry up to three). Wings, which give a glide after Mario 64's wing cap: A and D bank, W dives, S climbs. Explosive mushrooms, which blast the frog up and away when it touches one.
 - **Bouncers.** Lily pads and spider webs throw a frog back up. Webs throw harder.
 - **Flies.** Lines of flies hang over each hole; the first line on every hole follows the arc of a real shot. They look like the flies in *The Binding of Isaac*. Ten flies make the tongue ready: press E with another frog in reach and it gets knocked flying. A frog knocked into the water takes a penalty stroke.
-- **Hazards.** Water, lava and out of bounds each cost a stroke, and the frog goes back to where it was hit from.
+- **Hazards.** Lava and out of bounds each cost a stroke, and the frog goes back to where it was hit from. Water costs nothing.
 - **Online, up to four browsers.** Choose Play, then Host online: the setup screen shows a room code and a link. Friends choose Play online and type the code. Each picks their own frog. You swing on your own turn and watch everyone else's live. If someone leaves, the CPU takes their frog. When a room code will not connect, the host can invite by pasted code instead. No server of ours is involved: the browsers connect directly.
 - **Turns.** Up to four frogs, people or CPU, tee off in order. After that, the frog farthest from the lotus plays, as in golf. A hole is given up at five over par.
-- **Four holes,** each in its own theme: *Lily Swamp* (par 3), *Oasis Dunes* (par 4), *Main Street* (par 4, with traffic), and *Lava Flow* (par 5).
+- **Five big holes,** each at least a par 5 and about 400 m long: *Lily Swamp*, *Oasis Dunes*, *Toadstool Hollow* (the fungus course), *Main Street* (with traffic and a canal) and *Lava Flow* (par 6).
+- **Three routes on every hole.** Left and right routes swing across the hole and cross each other on a high terrace in the middle. The middle route runs under that terrace through a tunnel. Around them are cliffs, mesas, hills, rivers with waterfalls, and giant blue mushrooms.
+- **Webs set into the ground** over pits, from medium to extra large. A frog that lands on one sinks it into a deep funnel and is flung back up, like the web over the pit in the Deku Tree. Bigger webs fling harder.
+- **Giant blue mushrooms** are pinball bumpers that bounce a frog away. The small red ones explode.
+- **Water is free:** a frog swims where it lands, and a lily pad comes up under it for its next shot. Lava and out of bounds still cost a stroke.
+- **Point bubbles** float along the routes and out in the rough. Points are scored apart from strokes.
+- **Creatures:** snails crawl across the swamp and block bounces, and whirlpools in its water spin a frog and throw it off somewhere new. Antlions wait in the desert's sandy pits: one grabs a frog that lands near it, and that frog's turn ends there.
+- **Flies** each add one small hop at the next landing. A perfect hit sets off a firework from the striker's bell. The frog in first place wears a small crown.
 - **Eight frogs,** each with its own colours, pattern and big eyes: a red-eyed tree frog, a blue poison dart frog, a yellow-banded dart frog, a tomato frog, a cane toad, a golden toad, a horned frog and a glass frog.
 
 ## Controls
@@ -66,7 +73,7 @@ The layers:
 - **`crates/core`** holds every rule: the swing and the meter, the physics, the power-ups, the tongue, turns, scoring, the CPU, the online protocol, the camera and the HUD. It has no input or output, no floats and no clock.
 - **`crates/shim`** moves values across the WebAssembly boundary and decides nothing.
 - **`web/`** is a static page with a WebGL 2 canvas. It draws what the core returns. `web/net/` holds the online transport and its pinned Trystero bundle, fenced off by a boundary test.
-- **`data/`** holds every frog, hole, colour, word, sound recipe and shader.
+- **`data/`** holds every frog, hole, colour, word, sound recipe and shader. `data/course.json` is written by `tools/courses.py`, which lays out each hole from its three routes.
 - **`tools/art.py`** draws every picture as TikZ. The sources are kept in `tools/art/`.
 
 ```bash

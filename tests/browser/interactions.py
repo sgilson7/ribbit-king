@@ -5,7 +5,7 @@ it idle. These drive the game the way a person would and assert what the page
 shows. Expected values are worked out by hand from the data files, never
 copied from the game's own output:
 
-- the title is copy.json's "title"; the help lists 10 rows (help_rows) and 9 keys (controls).
+- the title is copy.json's "title"; the help lists 12 rows (help_rows) and 9 keys (controls).
 - setup starts with three frogs seated (a player and two CPUs, game.rs's
   default slots) and one empty seat; course.json's first hole is "Lily Swamp", par 3.
 - a seat cycles Player, CPU, Empty; the first seat is never empty.
@@ -41,7 +41,7 @@ def run(page, check, engine):
     check(page.is_visible("#help"), "How to play opens")
     rows = page.query_selector_all("#help-rows dt")
     keys = page.query_selector_all("#help-keys tr")
-    check(len(rows) == 10 and len(keys) == 9, f"10 help rows and 9 keys ({len(rows)}, {len(keys)})")
+    check(len(rows) == 12 and len(keys) == 9, f"12 help rows and 9 keys ({len(rows)}, {len(keys)})")
     click(page, "#help-close")
 
     click(page, "#play")
@@ -78,7 +78,13 @@ def run(page, check, engine):
     page.keyboard.press("Space")
     page.wait_for_timeout(600)
     page.keyboard.press("Space")
-    page.wait_for_timeout(1500)
+    # wait for it rather than for a fixed time: on a software renderer the
+    # big courses draw few frames a second, and the clock runs slower with them
+    want = COPY["stroke"].replace("{n}", "1")
+    try:
+        page.locator("#p-stroke", has_text=want).wait_for(timeout=20000)
+    except Exception:
+        pass
     stroke = page.inner_text("#p-stroke")
     check(stroke == COPY["stroke"].replace("{n}", "1"), f"the whack counts a stroke ({stroke!r})")
 

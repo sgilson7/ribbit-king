@@ -49,7 +49,7 @@
     "turn": "{who}'s turn",
     "perfect": "Perfect!",
     "whiff": "Whiff!",
-    "splash": "Splash! +1",
+    "splash": "Splash!",
     "lava": "Sizzle! +1",
     "out": "Out of bounds! +1",
     "landed": "",
@@ -68,7 +68,11 @@
     "par": "Par",
     "bogey": "Bogey",
     "double_bogey": "Double bogey",
-    "over_par": "In the lotus"
+    "over_par": "In the lotus",
+    "swim": "Splash! {who} swims (no penalty)",
+    "antlion": "An antlion grabs {who}!",
+    "whirlpool": "Whirlpool! {who} spins",
+    "points": "+{n}"
   },
   "words": {
     "hole_in_one": "Ace",
@@ -101,39 +105,47 @@
   "help_rows": [
     [
       "The swing",
-      "Aim with A and D (or the arrows), set the mallet's power with W and S, and change the loft with Q. The dotted arc shows where a perfect hit at that power first lands. Press Space: the needle starts round the dial. Press Space again to whack. In the gold is a perfect hit: full power, dead straight and a little extra. Elsewhere on the red bar is weaker, and early hooks left, late slices right. Off the bar is a whiff."
+      "Aim with A and D (or the arrows), set the mallet's power with W and S, and change the loft with Q. The dotted arc shows where a perfect hit at that power first lands. Press Space: the needle starts round the dial. Press Space again to whack. In the gold is a perfect hit: full power, dead straight, a little extra, and a firework from the bell. Elsewhere on the red bar is weaker, and early hooks left, late slices right. Off the bar is a whiff."
     ],
     [
       "In the air",
       "You fly your frog. W A S D steer it, relative to the camera. Drag the view with the mouse to look around."
     ],
     [
+      "Three routes",
+      "Every hole is a par 5 or more with three ways to the lotus: out left, out right, and down the middle. The left and right routes cross on a high terrace in the middle of the hole; the middle one goes under it through a tunnel. Cliffs, rivers and waterfalls sit between them."
+    ],
+    [
       "Lily pads and webs",
-      "Land on a lily pad or a spider web and it throws you back up. Webs throw harder."
+      "Lily pads throw you back up. Spider webs are strung across pits in the ground, from medium to extra large: land on one and it stretches down and flings you up, and a bigger web flings harder."
     ],
     [
-      "Extra jump",
-      "The spring power-up. Press Space in the air to hop again. You can carry three."
+      "Giant blue mushrooms",
+      "They work like pinball bumpers: touch one and it bounces you away. The small red mushrooms are explosive and blast you up and away."
     ],
     [
-      "Wings",
-      "Like the wing cap: glide for a few seconds. A and D bank, W dives to gain speed, S climbs."
+      "Power-ups",
+      "Extra jumps (Space in the air, carry three) and wings (glide: A D bank, W dive, S climb). Many sit out in the rough, off the fairways."
     ],
     [
-      "Explosive mushroom",
-      "Touch one and it goes off, blasting you up and away."
+      "Bubbles",
+      "Floating bubbles are worth points, more for bigger ones and the risky ones. Points are counted apart from your strokes."
     ],
     [
       "Flies",
-      "Lines of flies hang over every hole. Catch ten and your tongue is ready: press E with another frog in reach to knock it flying. Knock one into the water and it takes a penalty stroke."
+      "Each fly you catch is one small extra hop when you next land. Ten flies make the tongue ready: press E with another frog in reach to knock it flying."
     ],
     [
-      "Hazards",
-      "Water, lava and out of bounds cost a stroke, and the frog goes back to where it was hit from."
+      "Water",
+      "Frogs swim. Land in a river or pond and there is no penalty: a lily pad comes up under you and you play from there. Lava and out of bounds still cost a stroke."
+    ],
+    [
+      "Creatures",
+      "In the swamp, snails crawl across the fairways and block bounces, and whirlpools spin you round and throw you somewhere new. In the desert, antlions wait at the bottom of sandy pits: land near one and it grabs you, and your turn ends there."
     ],
     [
       "Turns",
-      "Everyone tees off in order; after that, the frog farthest from the lotus plays next, as in golf. A hole is given up at five over par."
+      "Everyone tees off in order; after that, the frog farthest from the lotus plays next, as in golf. A hole is given up at five over par. The frog in first place wears a small crown."
     ],
     [
       "Online",
@@ -220,5 +232,7 @@
   "slot_open": "Open seat",
   "slot_remote": "Online player",
   "slot_you": "You",
-  "prompt_online": "{who} is playing"
+  "prompt_online": "{who} is playing",
+  "points": "{n} pts",
+  "card_points": "Points"
 }
