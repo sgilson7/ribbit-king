@@ -16,6 +16,8 @@ Two causes, both fixed (SECOND-ORDER S31, PLAN P35–P36):
 | A joiner on a different build | turned away in about 1 s with the reload message |
 | A joiner in an empty room | "No host answered…" after the relay timeout |
 | `./scripts/check.sh` | BUILDER CHECK PASSED. 78 core tests, 12 boundary tests; browser and online checks in Chromium, Firefox and WebKit |
+| CI | success, 7 min 22 s, deployed |
+| Live site after the fix, four pages by room code | software-rendered: all three joiners in, standings equal, two runs of two; GPU: the same, one run |
 
 **Everyone must reload once.** A page from before this fix still uses the old room names and can't meet the new build.
 
