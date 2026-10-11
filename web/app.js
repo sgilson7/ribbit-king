@@ -238,10 +238,13 @@ async function start() {
     if (document.hidden) game.pause();
   });
 
+  // a "still" screen is drawn once, and again when the hole or the size changes
+  let stillDrawn = false;
   function resize() {
     const scale = renderer && renderer.software ? display.software_scale : 1;
     const [w, h] = game.resize(canvas.clientWidth, canvas.clientHeight, (window.devicePixelRatio || 1) * scale);
     if (renderer) renderer.resize(w, h);
+    stillDrawn = false;
   }
   window.addEventListener("resize", resize);
   resize();
@@ -292,8 +295,12 @@ async function start() {
       if (game.scene_version() !== sceneVersion) {
         sceneVersion = game.scene_version();
         renderer.setScene(game.static_instances(), game.uniforms(), game.clear_color(), game.terrain());
+        stillDrawn = false;
       }
-      renderer.frame(game.view(), game.instances(), game.draws());
+      if (h.scene === "live" || (h.scene === "still" && !stillDrawn)) {
+        renderer.frame(game.view(), game.instances(), game.draws());
+      }
+      stillDrawn = h.scene === "still";
     }
     requestAnimationFrame(frame);
   }

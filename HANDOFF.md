@@ -1,6 +1,24 @@
 # Handoff
 
-11 October 2026, round 4: the survey view is built and deployed. Round 3 follows.
+11 October 2026, round 5: online play fixed after "it has broken since the content update / survey view". Round 4 (the survey) and round 3 follow.
+
+## Round 5: online fixed
+
+Two causes, both fixed (SECOND-ORDER S31, PLAN P35–P36):
+
+- **Pages on different versions never met.** A room's name included the build. After every deploy, a page loaded before it searched for a room the host wasn't in, with no message, forever. Rooms are now named by the code alone. A different version meets the host and is told to reload both pages, and a joiner who finds no host is told so after the relay timeout.
+- **Slow computers blocked the handshake.** Drawing the big holes every frame behind the menus blocked a slow page for up to 5.5 s at a time. The page now draws nothing behind the full-screen art, and a single still frame behind the see-through menus.
+
+| Check | Result |
+| --- | --- |
+| Live site before the fix, four software-rendered pages by room code | one joiner of three failed; about 170 s of long tasks a page |
+| Local build, public relays, software-rendered, four pages by room code | all three joiners in, standings equal, two runs of two; about 0.6 s of long tasks a page |
+| A joiner on a different build | turned away in about 1 s with the reload message |
+| A joiner in an empty room | "No host answered…" after the relay timeout |
+| `./scripts/check.sh` | BUILDER CHECK PASSED. 78 core tests, 12 boundary tests; browser and online checks in Chromium, Firefox and WebKit |
+
+**Everyone must reload once.** A page from before this fix still uses the old room names and can't meet the new build.
+
 
 ## Round 4: survey the hole
 

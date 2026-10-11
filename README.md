@@ -45,7 +45,7 @@ On a touch screen, buttons appear along the bottom. Online, Esc shows the menu w
 
 Online play is Floodline's and Vagrancy's way of connecting browsers, with nothing of ours running anywhere. The transport is `web/net/rtc.js`: Vagrancy's port of Floodline's `quad_rtc.js`, extended from two seats to four. It is WebRTC between browsers in a star, so every joiner connects only to the host. Two ways in reach the same connection:
 
-- **A room code.** The vendored [Trystero](https://github.com/dmotz/trystero) bundle introduces the browsers over public Nostr relays. The relays are pinned in `web/net/config.js`, and the room name carries the build hash, so two versions of the game never meet.
+- **A room code.** The vendored [Trystero](https://github.com/dmotz/trystero) bundle introduces the browsers over public Nostr relays. The relays are pinned in `web/net/config.js`. The room name is the code alone, so a player on an older or newer version does meet the host and is told to reload both pages, rather than waiting for a room it will never find.
 - **A pasted code.** The host's invitation and the joiner's reply carry the whole handshake, and no relay is involved.
 
 On top of that, `crates/core/src/online.rs` runs a host's tick stream:

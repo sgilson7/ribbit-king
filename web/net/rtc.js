@@ -16,8 +16,10 @@
 // negotiated, ordered data channel:
 //
 //   * a room code: Trystero, over public Nostr relays this project does not
-//     run, introduces the two browsers; the room name carries the build hash
-//     so two builds cannot meet;
+//     run, introduces the two browsers. The room name is the code alone: two
+//     builds do meet, and the core's Hello turns a different build away with
+//     words that say to reload (it once carried the build hash, which left a
+//     stale page looking for its room forever, silently);
 //   * a pasted code: the host's invitation and the joiner's reply carry the
 //     whole handshake, compressed, and no relay is involved.
 //
@@ -177,7 +179,7 @@ export function open({ isHost, mode, room, build, onPeer, onLeft, onMessage, onE
       return;
     }
     if (s.closed) return;
-    const name = `${build}-${room}`;
+    const name = room;
     let r;
     try {
       r = lib.joinRoom({ appId: CONFIG.appId, password: CONFIG.password, rtcConfig: rtcConfig(), relayConfig: CONFIG.relayConfig }, name, {
@@ -214,6 +216,9 @@ export function open({ isHost, mode, room, build, onPeer, onLeft, onMessage, onE
         for (const k in sockets) if (sockets[k] && sockets[k].readyState === 1) open++;
       } catch (e) { /* the strategy may not expose them */ }
       if (open === 0) onError('online_no_relay');
+      // the relays are up but no host has answered: a joiner says so rather
+      // than looking for the room forever (a host waiting for joiners is fine)
+      else if (!isHost) onError('online_no_host');
     }, CONFIG.relayTimeoutMs);
   }
 

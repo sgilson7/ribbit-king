@@ -111,6 +111,7 @@ const ONLINE_WORDS: &[&str] = &[
     "online_host_left",
     "online_no_relay",
     "online_no_path",
+    "online_no_host",
     "online_bad_code",
 ];
 
@@ -1569,9 +1570,23 @@ impl Game {
         json!({ "id": d.id, "name": d.name, "kind": d.kind, "colour": hex(d.skin), "eye": hex(d.eye) })
     }
 
+    /// How much of the 3D scene a screen shows: "hidden" behind the title's
+    /// and the hole card's full-screen art, "still" behind the see-through
+    /// menus (one frame is enough there), "live" in play. A slow computer
+    /// that draws every frame behind a menu starves the online handshake
+    /// (SECOND-ORDER S26), so the page draws only what shows.
+    fn scene_shown(&self) -> &'static str {
+        match self.mode {
+            Mode::Title | Mode::Intro => "hidden",
+            Mode::Setup | Mode::Card | Mode::Final => "still",
+            Mode::Play | Mode::Paused => "live",
+        }
+    }
+
     pub fn hud_json(&self) -> String {
         let mut h = json!({
             "mode": self.mode.name(),
+            "scene": self.scene_shown(),
             "sounds": self.sounds,
             "notice": self.notice,
             "online": self.online.as_ref().map(|o| json!({
@@ -2181,6 +2196,24 @@ pub(crate) mod tests {
             g.round.as_ref().unwrap().phase,
             Phase::Swing | Phase::Flight
         ));
+    }
+
+    #[test]
+    fn the_scene_is_drawn_only_where_it_shows() {
+        // the title's and the hole card's art covers the whole view; the
+        // setup and the scorecard are see-through sheets over one still frame
+        let scene = |g: &Game| serde_json::from_str::<Value>(&g.hud_json()).unwrap()["scene"].clone();
+        let mut g = game();
+        assert_eq!(scene(&g), "hidden");
+        g.begin();
+        assert_eq!(scene(&g), "still");
+        g.start_round();
+        assert_eq!(scene(&g), "hidden");
+        g.tee_off();
+        frames(&mut g, 2, 0);
+        assert_eq!(scene(&g), "live");
+        g.pause();
+        assert_eq!(scene(&g), "live");
     }
 
     #[test]

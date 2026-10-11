@@ -29,6 +29,8 @@ Done means: up to four people, each in their own browser, play one round togethe
 
 > excellent so far; there should be a way to zoom out and inspect the hole youre on so you can plan a bit better how you will proceed
 
+> ok so now the online multiplayer has broken and stopped working since the big content update / survey view
+
 ## Done means
 
 A 3D browser game, deployed on GitHub Pages and listed on sgilson7.github.io, in which up to four frogs (people or CPU) play a round on four themed holes with every mechanic above, built as a Builder project whose `./scripts/check.sh` passes.
