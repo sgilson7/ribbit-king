@@ -15,6 +15,8 @@ A pin on the ground reports how far it is from the frog, how far from it to the 
 | Check | Result |
 | --- | --- |
 | `./scripts/check.sh` | BUILDER CHECK PASSED. 77 core tests (4 new for the survey), 12 boundary tests; browser check (now opens, zooms and closes the survey) and four-browser online check in Chromium, Firefox and WebKit |
+| CI (Linux, Chromium, online included) | success, 14 min 48 s, deployed. The first push failed CI on a test bug that the survey step exposed (SECOND-ORDER S30); fixed in the second |
+| Live, browser check | passed in three engines, survey steps included |
 | Frame rate, 1280×720, Chromium | 60 fps aiming and 60 fps surveying on the GPU; 5–5.5 fps for both on a software renderer |
 
 
