@@ -8,7 +8,8 @@ copied from the game's own output:
 - the title is copy.json's "title"; the help lists 13 rows (help_rows) and 11 keys (controls).
 - setup starts with three frogs seated (a player and two CPUs, game.rs's
   default slots) and one empty seat; course.json's first hole is "Lily Swamp", par 3.
-- a seat cycles Player, CPU, Empty; the first seat is never empty.
+- a seat cycles Player, CPU, Empty; the first seat is never empty, so it
+  goes Player, CPU, Player.
 - after teeing off, the HUD names the hole and shows the meter; the player's
   first stroke, once whacked, reads "Stroke 1".
 - V rises into the survey: its pin's tag names the metres to the lotus and
@@ -60,9 +61,14 @@ def run(page, check, engine):
         click(page, "#slots .slot:nth-child(4) .kind")
     seated = page.query_selector_all("#slots .slot:not(.off)")
     check(len(seated) == 3, f"and back to empty after CPU ({len(seated)})")
-    for _ in range(3):
+    # Player, CPU, then past Empty back to Player: two clicks, and the seat
+    # ends on a person, so the whack below is the person's and not a CPU's
+    kinds = []
+    for _ in range(2):
         click(page, "#slots .slot:nth-child(1) .kind")
+        kinds.append(page.inner_text("#slots .slot:nth-child(1) .kind"))
     check(not page.query_selector("#slots .slot:nth-child(1).off"), "the first seat is never empty")
+    check(kinds == [COPY["slot_cpu"], COPY["slot_human"]], f"it goes CPU, then skips Empty back to Player {kinds}")
 
     click(page, "#start")
     first = COURSE["holes"][0]
